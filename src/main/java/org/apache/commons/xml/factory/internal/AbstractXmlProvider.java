@@ -28,6 +28,8 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
+import javax.xml.validation.ValidatorHandler;
 import javax.xml.xpath.XPathFactory;
 import javax.xml.xpath.XPathFactoryConfigurationException;
 
@@ -105,6 +107,22 @@ abstract class AbstractXmlProvider implements XmlProvider {
             factory.setFeature(feature, value);
         } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
             throw fail(factory, "feature", feature, e);
+        }
+    }
+
+    static void setFeature(final Validator validator, final String feature, final boolean value) {
+        try {
+            validator.setFeature(feature, value);
+        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+            throw fail(validator, "feature", feature, e);
+        }
+    }
+
+    static void setFeature(final ValidatorHandler handler, final String feature, final boolean value) {
+        try {
+            handler.setFeature(feature, value);
+        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+            throw fail(handler, "feature", feature, e);
         }
     }
 

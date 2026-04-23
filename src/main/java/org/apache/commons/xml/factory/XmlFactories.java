@@ -74,8 +74,7 @@ public final class XmlFactories {
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
-        return factory;
+        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
     }
 
     /**
@@ -96,8 +95,7 @@ public final class XmlFactories {
      */
     public static SAXParserFactory newSAXParserFactory() {
         final SAXParserFactory factory = SAXParserFactory.newInstance();
-        ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
-        return factory;
+        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
     }
 
     /**
@@ -128,8 +126,7 @@ public final class XmlFactories {
      */
     public static SchemaFactory newSchemaFactory() {
         final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-        ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
-        return factory;
+        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
     }
 
     /**
@@ -157,8 +154,7 @@ public final class XmlFactories {
      */
     public static TransformerFactory newTransformerFactory() {
         final TransformerFactory factory = TransformerFactory.newInstance();
-        ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
-        return factory;
+        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
     }
 
     /**
@@ -184,8 +180,7 @@ public final class XmlFactories {
      */
     public static XMLInputFactory newXMLInputFactory() {
         final XMLInputFactory factory = XMLInputFactory.newInstance();
-        ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
-        return factory;
+        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
     }
 
     /**
@@ -205,8 +200,7 @@ public final class XmlFactories {
      */
     public static XPathFactory newXPathFactory() {
         final XPathFactory factory = XPathFactory.newInstance();
-        ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
-        return factory;
+        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
     }
 
     private XmlFactories() {

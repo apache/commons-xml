@@ -49,7 +49,7 @@ public final class StockJdkProvider extends AbstractXmlProvider {
     }
 
     @Override
-    public void configure(final DocumentBuilderFactory factory) {
+    public DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         setFeature(factory, FEATURE_DISALLOW_DOCTYPE, true);
         factory.setXIncludeAware(false);
@@ -61,10 +61,11 @@ public final class StockJdkProvider extends AbstractXmlProvider {
         //   - ACCESS_EXTERNAL_SCHEMA: protocols allowed for xsi:schemaLocation hints and for xs:import/xs:include/xs:redefine in a validating Schema.
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        return factory;
     }
 
     @Override
-    public void configure(final SAXParserFactory factory) {
+    public SAXParserFactory configure(final SAXParserFactory factory) {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         setFeature(factory, FEATURE_DISALLOW_DOCTYPE, true);
         factory.setXIncludeAware(false);
@@ -72,16 +73,18 @@ public final class StockJdkProvider extends AbstractXmlProvider {
         // No ACCESS_EXTERNAL_* here: the JAXP SAXParserFactory API exposes neither setAttribute nor setProperty, so these properties cannot be applied at
         // factory level. disallow-doctype-decl and validating=false already block external resolution on the normal parse path; callers who modify the posture
         // should set parser.setProperty(XMLConstants.ACCESS_EXTERNAL_{DTD,SCHEMA}, "") on each SAXParser returned by newSAXParser().
+        return factory;
     }
 
     @Override
-    public void configure(final XMLInputFactory factory) {
+    public XMLInputFactory configure(final XMLInputFactory factory) {
         setProperty(factory, XMLInputFactory.SUPPORT_DTD, false);
         setProperty(factory, XMLInputFactory.IS_VALIDATING, false);
+        return factory;
     }
 
     @Override
-    public void configure(final TransformerFactory factory) {
+    public TransformerFactory configure(final TransformerFactory factory) {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Defence-in-depth: FSP already tightens these to the empty string on the JDK's XMLSecurityManager path. They only fire if the caller turns FSP off
         // on the returned factory; the default resolver then consults them and refuses the fetch before any I/O.
@@ -89,15 +92,17 @@ public final class StockJdkProvider extends AbstractXmlProvider {
         //   - ACCESS_EXTERNAL_STYLESHEET: protocols allowed for xsl:import, xsl:include and document() URIs during compile and transform.
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+        return factory;
     }
 
     @Override
-    public void configure(final XPathFactory factory) {
+    public XPathFactory configure(final XPathFactory factory) {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        return factory;
     }
 
     @Override
-    public void configure(final SchemaFactory factory) {
+    public SchemaFactory configure(final SchemaFactory factory) {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Defence-in-depth: FSP already tightens these to the empty string on the JDK's XMLSecurityManager path. They only fire if the caller turns FSP off
         // on the returned factory; the default resolver then consults them and refuses the fetch before any I/O. The settings propagate into Validators
@@ -106,5 +111,6 @@ public final class StockJdkProvider extends AbstractXmlProvider {
         //   - ACCESS_EXTERNAL_SCHEMA: protocols allowed for xs:import, xs:include and xs:redefine schemaLocation URIs during schema compilation.
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        return factory;
     }
 }

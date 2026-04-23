@@ -41,9 +41,10 @@ import javax.xml.xpath.XPathFactory;
  * <ul>
  *   <li>{@link #supports(Class)} must return {@code true} <em>only</em> for factory classes for which this provider can implement <em>every</em> relevant
  *       {@code configure} method.</li>
- *   <li>Each {@code configure} method must either complete successfully with the factory fully hardened, or throw. Returning a partially-configured factory is
- *       a bug; callers rely on the contract that a factory observed after a successful {@code configure} call has every relevant feature locked down. Wrap any
- *       checked exception (for example {@link javax.xml.parsers.ParserConfigurationException}, {@link javax.xml.stream.XMLStreamException},
+ *   <li>Each {@code configure} method must return a hardened factory (either the supplied instance hardened in place, or a wrapper that enforces hardening on
+ *       every factory product) or throw. Returning a partially-configured factory is a bug; callers rely on the contract that the returned factory has every
+ *       relevant knob locked down, including on objects it produces. Wrap any checked exception (for example
+ *       {@link javax.xml.parsers.ParserConfigurationException}, {@link javax.xml.stream.XMLStreamException},
  *       {@link javax.xml.transform.TransformerConfigurationException}) in an unchecked exception whose message names the feature or property that failed.</li>
  *   <li>Providers need not be thread-safe themselves, but they must not hold mutable global state. Each {@code configure} call operates on a caller-supplied
  *       factory.</li>
@@ -69,9 +70,10 @@ public interface XmlProvider {
      *
      * <p>The default implementation throws {@link UnsupportedOperationException}; providers that match DOM factories must override.</p>
      *
-     * @param factory the vanilla factory to harden in place; never {@code null}.
+     * @param factory the vanilla factory to harden; never {@code null}.
+     * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
-    default void configure(final DocumentBuilderFactory factory) {
+    default DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
         throw new UnsupportedOperationException();
     }
 
@@ -80,9 +82,10 @@ public interface XmlProvider {
      *
      * <p>The default implementation throws {@link UnsupportedOperationException}; providers that match SAX factories must override.</p>
      *
-     * @param factory the vanilla factory to harden in place; never {@code null}.
+     * @param factory the vanilla factory to harden; never {@code null}.
+     * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
-    default void configure(final SAXParserFactory factory) {
+    default SAXParserFactory configure(final SAXParserFactory factory) {
         throw new UnsupportedOperationException();
     }
 
@@ -91,9 +94,10 @@ public interface XmlProvider {
      *
      * <p>The default implementation throws {@link UnsupportedOperationException}; providers that match StAX input factories must override.</p>
      *
-     * @param factory the vanilla factory to harden in place; never {@code null}.
+     * @param factory the vanilla factory to harden; never {@code null}.
+     * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
-    default void configure(final XMLInputFactory factory) {
+    default XMLInputFactory configure(final XMLInputFactory factory) {
         throw new UnsupportedOperationException();
     }
 
@@ -102,9 +106,10 @@ public interface XmlProvider {
      *
      * <p>The default implementation throws {@link UnsupportedOperationException}; providers that match TrAX factories must override.</p>
      *
-     * @param factory the vanilla factory to harden in place; never {@code null}.
+     * @param factory the vanilla factory to harden; never {@code null}.
+     * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
-    default void configure(final TransformerFactory factory) {
+    default TransformerFactory configure(final TransformerFactory factory) {
         throw new UnsupportedOperationException();
     }
 
@@ -113,9 +118,10 @@ public interface XmlProvider {
      *
      * <p>The default implementation throws {@link UnsupportedOperationException}; providers that match XPath factories must override.</p>
      *
-     * @param factory the vanilla factory to harden in place; never {@code null}.
+     * @param factory the vanilla factory to harden; never {@code null}.
+     * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
-    default void configure(final XPathFactory factory) {
+    default XPathFactory configure(final XPathFactory factory) {
         throw new UnsupportedOperationException();
     }
 
@@ -124,9 +130,10 @@ public interface XmlProvider {
      *
      * <p>The default implementation throws {@link UnsupportedOperationException}; providers that match Schema factories must override.</p>
      *
-     * @param factory the vanilla factory to harden in place; never {@code null}.
+     * @param factory the vanilla factory to harden; never {@code null}.
+     * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
-    default void configure(final SchemaFactory factory) {
+    default SchemaFactory configure(final SchemaFactory factory) {
         throw new UnsupportedOperationException();
     }
 }

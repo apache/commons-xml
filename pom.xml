@@ -44,9 +44,10 @@
     <commons.packageId>xml.factory</commons.packageId>
     <project.build.outputTimestamp>2026-04-22T00:00:00Z</project.build.outputTimestamp>
 
-    <!-- JIRA coordinates (to be assigned) -->
+    <!-- JIRA coordinates (to be assigned)
     <commons.jira.id>COMMONSXMLFACTORY</commons.jira.id>
-    <commons.jira.pid>12300000</commons.jira.pid>
+    <commons.jira.pid>12300000</commons.jira.pid> -->
+    <changes.jira.skip>true</changes.jira.skip>
 
     <!-- Java baseline -->
     <maven.compiler.source>1.8</maven.compiler.source>

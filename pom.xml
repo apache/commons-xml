@@ -94,27 +94,27 @@
               <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
             </configuration>
           </execution>
-          <!--
           <execution>
             <id>test-xerces</id>
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xerces</reportsDirectory>
-              <additionalClassPathDependencies>
+              <additionalClasspathDependencies>
                 <dependency>
                   <groupId>xerces</groupId>
                   <artifactId>xercesImpl</artifactId>
                   <version>${commons.xerces.version}</version>
                 </dependency>
-              </additionalClassPathDependencies>
+              </additionalClasspathDependencies>
             </configuration>
           </execution>
+          <!--
           <execution>
             <id>test-woodstox</id>
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/woodstox</reportsDirectory>
-              <additionalClassPathDependencies>
+              <additionalClasspathDependencies>
                 <dependency>
                   <groupId>com.fasterxml.woodstox</groupId>
                   <artifactId>woodstox-core</artifactId>
@@ -128,7 +128,7 @@
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/saxon</reportsDirectory>
-              <additionalClassPathDependencies>
+              <additionalClasspathDependencies>
                 <dependency>
                   <groupId>net.sf.saxon</groupId>
                   <artifactId>Saxon-HE</artifactId>

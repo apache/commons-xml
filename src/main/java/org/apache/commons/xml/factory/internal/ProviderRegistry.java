@@ -17,6 +17,7 @@
 package org.apache.commons.xml.factory.internal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -97,7 +98,7 @@ public final class ProviderRegistry {
     }
 
     private static List<XmlProvider> bundledProviders() {
-        return Collections.singletonList(new StockJdkProvider());
+        return Arrays.asList(new StockJdkProvider(), new XercesProvider());
     }
 
     private static Iterable<XmlProvider> serviceLoaderProviders() {

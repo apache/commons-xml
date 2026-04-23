@@ -61,6 +61,12 @@
 
   <dependencies>
     <dependency>
+      <groupId>net.sf.saxon</groupId>
+      <artifactId>Saxon-HE</artifactId>
+      <version>${commons.saxon.version}</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
@@ -92,6 +98,9 @@
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
+              <classpathDependencyExcludes>
+                <exclude>net.sf.saxon:Saxon-HE</exclude>
+              </classpathDependencyExcludes>
             </configuration>
           </execution>
           <execution>
@@ -106,6 +115,9 @@
                   <version>${commons.xerces.version}</version>
                 </dependency>
               </additionalClasspathDependencies>
+              <classpathDependencyExcludes>
+                <exclude>net.sf.saxon:Saxon-HE</exclude>
+              </classpathDependencyExcludes>
             </configuration>
           </execution>
           <execution>
@@ -120,9 +132,11 @@
                   <version>${commons.woodstox.version}</version>
                 </dependency>
               </additionalClasspathDependencies>
+              <classpathDependencyExcludes>
+                <exclude>net.sf.saxon:Saxon-HE</exclude>
+              </classpathDependencyExcludes>
             </configuration>
           </execution>
-          <!--
           <execution>
             <id>test-saxon</id>
             <goals><goal>test</goal></goals>
@@ -134,10 +148,9 @@
                   <artifactId>Saxon-HE</artifactId>
                   <version>${commons.saxon.version}</version>
                 </dependency>
-              </additionalClassPathDependencies>
+              </additionalClasspathDependencies>
             </configuration>
           </execution>
-          -->
         </executions>
       </plugin>
 

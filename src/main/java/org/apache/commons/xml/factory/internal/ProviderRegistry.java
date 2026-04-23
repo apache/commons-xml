@@ -98,7 +98,7 @@ public final class ProviderRegistry {
     }
 
     private static List<XmlProvider> bundledProviders() {
-        return Arrays.asList(new StockJdkProvider(), new XercesProvider());
+        return Arrays.asList(new StockJdkProvider(), new XercesProvider(), new WoodstoxProvider());
     }
 
     private static Iterable<XmlProvider> serviceLoaderProviders() {

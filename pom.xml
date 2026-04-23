@@ -108,7 +108,6 @@
               </additionalClasspathDependencies>
             </configuration>
           </execution>
-          <!--
           <execution>
             <id>test-woodstox</id>
             <goals><goal>test</goal></goals>
@@ -120,9 +119,10 @@
                   <artifactId>woodstox-core</artifactId>
                   <version>${commons.woodstox.version}</version>
                 </dependency>
-              </additionalClassPathDependencies>
+              </additionalClasspathDependencies>
             </configuration>
           </execution>
+          <!--
           <execution>
             <id>test-saxon</id>
             <goals><goal>test</goal></goals>

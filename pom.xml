@@ -75,9 +75,9 @@
         Run the test suite four times, each with exactly one JAXP implementation on the classpath:
 
           - test-stockjdk: stock JDK factories only
-          - test-xerces:   stock JDK + external Apache Xerces
-          - test-woodstox: stock JDK + Woodstox (StAX)
-          - test-saxon:    stock JDK + Saxon-HE (TrAX, XPath)
+          - test-xerces:   stock JDK + external Apache Xerces  (stashed until XercesProvider lands)
+          - test-woodstox: stock JDK + Woodstox (StAX)          (stashed until WoodstoxProvider lands)
+          - test-saxon:    stock JDK + Saxon-HE (TrAX, XPath)   (stashed until SaxonProvider lands)
       -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -94,6 +94,7 @@
               <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
             </configuration>
           </execution>
+          <!--
           <execution>
             <id>test-xerces</id>
             <goals><goal>test</goal></goals>
@@ -136,6 +137,7 @@
               </additionalClassPathDependencies>
             </configuration>
           </execution>
+          -->
         </executions>
       </plugin>
 

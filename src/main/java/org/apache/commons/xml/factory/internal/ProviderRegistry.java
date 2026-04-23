@@ -33,7 +33,7 @@ import org.apache.commons.xml.factory.spi.XmlProvider;
  * <h2>Dispatch order</h2>
  *
  * <ol>
- *   <li>Bundled providers in a fixed order.</li>
+ *   <li>Bundled providers in a fixed order: {@link StockJdkProvider}, {@link XercesProvider}, {@link WoodstoxProvider}, {@link SaxonProvider}.</li>
  *   <li>Third-party providers discovered via {@link ServiceLoader}, in the order {@link ServiceLoader} yields them.</li>
  *   <li>If nothing matches, {@link UnsupportedXmlImplementationException}.</li>
  * </ol>
@@ -97,7 +97,7 @@ public final class ProviderRegistry {
     }
 
     private static List<XmlProvider> bundledProviders() {
-        return Collections.emptyList();
+        return Collections.singletonList(new StockJdkProvider());
     }
 
     private static Iterable<XmlProvider> serviceLoaderProviders() {

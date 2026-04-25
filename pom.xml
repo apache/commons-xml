@@ -81,13 +81,28 @@
         Run the test suite four times, each with exactly one JAXP implementation on the classpath:
 
           - test-stockjdk: stock JDK factories only
-          - test-xerces:   stock JDK + external Apache Xerces  (stashed until XercesProvider lands)
-          - test-woodstox: stock JDK + Woodstox (StAX)          (stashed until WoodstoxProvider lands)
-          - test-saxon:    stock JDK + Saxon-HE (TrAX, XPath)   (stashed until SaxonProvider lands)
+          - test-xerces:   stock JDK + external Apache Xerces
+          - test-woodstox: stock JDK + Woodstox (StAX)
+          - test-saxon:    stock JDK + Saxon-HE (TrAX, XPath)
       -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
+        <!--
+          Make the underlying JAXP factories as permissive as the JDK allows. Hardened factories produced by
+          XmlFactories should still block every attack the test suite throws at them; if a test passes only
+          because the JDK's defaults intervened, we want it to fail here so the gap shows up.
+
+          Inherited by every execution defined below.
+        -->
+        <configuration>
+          <systemPropertyVariables>
+            <!-- Allow all protocols for external DTDs, schemas, and stylesheets. -->
+            <javax.xml.accessExternalDTD>all</javax.xml.accessExternalDTD>
+            <javax.xml.accessExternalSchema>all</javax.xml.accessExternalSchema>
+            <javax.xml.accessExternalStylesheet>all</javax.xml.accessExternalStylesheet>
+          </systemPropertyVariables>
+        </configuration>
         <executions>
           <execution>
             <id>default-test</id>

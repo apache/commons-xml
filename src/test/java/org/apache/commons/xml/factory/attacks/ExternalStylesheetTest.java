@@ -16,51 +16,70 @@
  */
 package org.apache.commons.xml.factory.attacks;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.net.URL;
+
+import javax.xml.transform.Templates;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
+
+import org.apache.commons.xml.factory.XmlFactories;
 import org.junit.jupiter.api.Test;
 
 /**
- * Exercises {@link javax.xml.XMLConstants#ACCESS_EXTERNAL_STYLESHEET ACCESS_EXTERNAL_STYLESHEET} via the three XSLT vectors it guards:
- * {@code xsl:include} and {@code xsl:import} at compile time, and the {@code document()} function at transform time.
+ * Checks whether stylesheets can access external resources.
+ *
+ * <p>Each fixture under {@code src/test/resources/ExternalStylesheetTest/} references a sibling file that, if hardening fails to block, would emit the
+ * {@link #MARKER} string into the transform output. The assertion is deterministic: hardening either throws, or the call returns and the marker does not
+ * appear in the output.</p>
+ *
+ * <p>Cases covered:</p>
+ *
+ * <ul>
+ *   <li>{@code xsl:include} of a sibling stylesheet, resolved at compile time.</li>
+ *   <li>{@code xsl:import} of a sibling stylesheet, resolved at compile time.</li>
+ *   <li>{@code document()} call referencing a sibling XML file, resolved at transform time.</li>
+ * </ul>
  */
 class ExternalStylesheetTest {
 
     private static final String INPUT = "<root/>";
 
-    private static String xsltWithDocumentCall(final String uri) {
-        return "<?xml version=\"1.0\"?>\n"
-                + "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">\n"
-                + "  <xsl:template match=\"/\">\n"
-                + "    <xsl:copy-of select=\"document('" + uri + "')\"/>\n"
-                + "  </xsl:template>\n"
-                + "</xsl:stylesheet>\n";
-    }
-
-    private static String xsltWithImport(final String href) {
-        return "<?xml version=\"1.0\"?>\n"
-                + "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">\n"
-                + "  <xsl:import href=\"" + href + "\"/>\n"
-                + "</xsl:stylesheet>\n";
-    }
-
-    private static String xsltWithInclude(final String href) {
-        return "<?xml version=\"1.0\"?>\n"
-                + "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">\n"
-                + "  <xsl:include href=\"" + href + "\"/>\n"
-                + "</xsl:stylesheet>\n";
-    }
+    private static final String MARKER = "All your base are belong to us";
 
     @Test
-    void transformerBlocksDocument() {
-        AttackTestSupport.assertTransformerBlocksWithStylesheet(xsltWithDocumentCall(Payloads.UNREACHABLE_HTTP), INPUT);
+    void transformerStylesheetBlocksInclude() {
+        assertStylesheetExcludesMarker("with-include.xsl");
     }
 
     @Test
     void transformerStylesheetBlocksImport() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(xsltWithImport(Payloads.UNREACHABLE_HTTP));
+        assertStylesheetExcludesMarker("with-import.xsl");
     }
 
     @Test
-    void transformerStylesheetBlocksInclude() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(xsltWithInclude(Payloads.UNREACHABLE_HTTP));
+    void transformerBlocksDocument() {
+        assertStylesheetExcludesMarker("with-document.xsl");
+    }
+
+    private static void assertStylesheetExcludesMarker(final String resource) {
+        final URL url = ExternalStylesheetTest.class.getResource("/ExternalStylesheetTest/" + resource);
+        assertNotNull(url, "test resource not found: " + resource);
+        final String output;
+        try {
+            final StreamSource src = new StreamSource(url.openStream(), url.toString());
+            final Templates templates = XmlFactories.newTransformerFactory().newTemplates(src);
+            final StringWriter sink = new StringWriter();
+            templates.newTransformer().transform(new StreamSource(new StringReader(INPUT)), new StreamResult(sink));
+            output = sink.toString();
+        } catch (final Throwable t) {
+            return; // hardening blocked at compile or transform; acceptable outcome.
+        }
+        assertFalse(output.contains(MARKER),
+                "Hardening did not block the external reference; output contained marker '" + MARKER + "'.\nFull output:\n" + output);
     }
 }

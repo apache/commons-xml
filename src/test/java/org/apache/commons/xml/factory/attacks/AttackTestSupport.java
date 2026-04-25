@@ -173,16 +173,6 @@ final class AttackTestSupport {
     }
 
     /**
-     * Asserts that compiling the given stylesheet and then transforming the given input through it is blocked by the hardening layer. Used for attacks whose
-     * external fetch is triggered at {@code Transformer.transform(...)} time rather than compile time (for example {@code document()} in an XSLT template).
-     */
-    static void assertTransformerBlocksWithStylesheet(final String xslt, final String input) {
-        assertAttackBlocked(() -> XmlFactories.newTransformerFactory()
-                .newTransformer(source(xslt))
-                .transform(source(input), new StreamResult(new StringWriter())));
-    }
-
-    /**
      * Asserts that validating the given XML instance through a {@link javax.xml.validation.Validator} obtained from {@link Payloads#BENIGN_SCHEMA} is blocked
      * by the hardening layer. The schema itself is trusted and benign; the attack lives in the instance document.
      */

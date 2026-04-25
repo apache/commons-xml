@@ -182,15 +182,6 @@ final class AttackTestSupport {
         assertAttackBlocked(() -> XmlFactories.newSchemaFactory().newSchema(source(Payloads.BENIGN_SCHEMA)).newValidator().validate(source(xml)));
     }
 
-    /**
-     * Asserts that evaluating the given XPath expression on a fresh {@link javax.xml.xpath.XPath} from {@code factory} is blocked by the hardening layer. The
-     * expression is evaluated against an empty DOM document as context; this is enough for URI-fetching functions such as {@code doc()}, {@code collection()},
-     * {@code unparsed-text()} and {@code json-doc()}, which do not consult the context node beyond requiring it to be non-null.
-     */
-    static void assertXPathBlocks(final javax.xml.xpath.XPathFactory factory, final String expression) {
-        assertAttackBlocked(() -> factory.newXPath().evaluate(expression, XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().newDocument()));
-    }
-
     private static InputSource inputSource(final String xml) {
         return new InputSource(new StringReader(xml));
     }

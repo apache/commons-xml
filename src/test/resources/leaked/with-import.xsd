@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:l="http://example.org/leaked"
+           targetNamespace="http://example.org/wrapper"
+           elementFormDefault="qualified">
+  <xs:import namespace="http://example.org/leaked" schemaLocation="included.xsd"/>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="l:leaked"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

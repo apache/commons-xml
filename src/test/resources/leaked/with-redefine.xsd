@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns="http://example.org/leaked"
+           targetNamespace="http://example.org/leaked"
+           elementFormDefault="qualified">
+  <xs:redefine schemaLocation="included.xsd">
+    <xs:complexType name="LeakedType">
+      <xs:complexContent>
+        <xs:extension base="LeakedType">
+          <xs:sequence>
+            <xs:element name="extra" type="xs:string"/>
+          </xs:sequence>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:redefine>
+  <xs:element name="root" type="LeakedType"/>
+</xs:schema>

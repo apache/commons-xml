@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns="http://example.org/leaked"
+           targetNamespace="http://example.org/leaked"
+           elementFormDefault="qualified">
+  <xs:element name="leaked" type="xs:string"/>
+  <xs:complexType name="LeakedType">
+    <xs:sequence/>
+  </xs:complexType>
+</xs:schema>

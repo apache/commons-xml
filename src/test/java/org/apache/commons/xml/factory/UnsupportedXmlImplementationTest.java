@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.apache.commons.xml.factory.internal.ProviderRegistry;
+import org.apache.commons.xml.factory.internal.CompositeProvider;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -66,7 +66,7 @@ class UnsupportedXmlImplementationTest {
     void registryRejectsUnknownFactory() {
         final IllegalStateException thrown = assertThrows(
                 IllegalStateException.class,
-                () -> ProviderRegistry.getInstance().providerFor(FakeDocumentBuilderFactory.class));
+                () -> CompositeProvider.getInstance().configure(new FakeDocumentBuilderFactory()));
         assertNotNull(thrown.getMessage());
         assertTrue(thrown.getMessage().contains(FakeDocumentBuilderFactory.class.getName()),
                 "Exception message must name the unsupported class: " + thrown.getMessage());

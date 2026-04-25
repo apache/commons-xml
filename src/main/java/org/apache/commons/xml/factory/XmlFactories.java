@@ -24,7 +24,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.xml.factory.internal.ProviderRegistry;
+import org.apache.commons.xml.factory.internal.CompositeProvider;
 import org.apache.commons.xml.factory.spi.XmlProvider;
 
 /**
@@ -74,8 +74,7 @@ public final class XmlFactories {
      *         apply the hardening settings to it.
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
-        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
+        return CompositeProvider.getInstance().configure(DocumentBuilderFactory.newInstance());
     }
 
     /**
@@ -96,8 +95,7 @@ public final class XmlFactories {
      *         apply the hardening settings to it.
      */
     public static SAXParserFactory newSAXParserFactory() {
-        final SAXParserFactory factory = SAXParserFactory.newInstance();
-        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
+        return CompositeProvider.getInstance().configure(SAXParserFactory.newInstance());
     }
 
     /**
@@ -128,8 +126,7 @@ public final class XmlFactories {
      *         apply the hardening settings to it.
      */
     public static SchemaFactory newSchemaFactory() {
-        final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
+        return CompositeProvider.getInstance().configure(SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI));
     }
 
     /**
@@ -157,8 +154,7 @@ public final class XmlFactories {
      *         apply the hardening settings to it.
      */
     public static TransformerFactory newTransformerFactory() {
-        final TransformerFactory factory = TransformerFactory.newInstance();
-        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
+        return CompositeProvider.getInstance().configure(TransformerFactory.newInstance());
     }
 
     /**
@@ -184,8 +180,7 @@ public final class XmlFactories {
      *         apply the hardening settings to it.
      */
     public static XMLInputFactory newXMLInputFactory() {
-        final XMLInputFactory factory = XMLInputFactory.newInstance();
-        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
+        return CompositeProvider.getInstance().configure(XMLInputFactory.newInstance());
     }
 
     /**
@@ -205,8 +200,7 @@ public final class XmlFactories {
      *         apply the hardening settings to it.
      */
     public static XPathFactory newXPathFactory() {
-        final XPathFactory factory = XPathFactory.newInstance();
-        return ProviderRegistry.getInstance().providerFor(factory.getClass()).configure(factory);
+        return CompositeProvider.getInstance().configure(XPathFactory.newInstance());
     }
 
     private XmlFactories() {

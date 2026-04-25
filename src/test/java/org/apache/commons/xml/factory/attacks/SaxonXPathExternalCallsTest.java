@@ -20,8 +20,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.xml.factory.internal.ProviderRegistry;
-import org.apache.commons.xml.factory.spi.XmlProvider;
+import org.apache.commons.xml.factory.internal.CompositeProvider;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -81,7 +80,6 @@ class SaxonXPathExternalCallsTest {
         } catch (final ReflectiveOperationException e) {
             throw new AssertionError("Cannot instantiate " + SAXON_XPATH_FACTORY_CLASS, e);
         }
-        final XmlProvider provider = ProviderRegistry.getInstance().providerFor(xpf.getClass());
-        return provider.configure(xpf);
+        return CompositeProvider.getInstance().configure(xpf);
     }
 }

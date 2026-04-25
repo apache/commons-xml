@@ -43,17 +43,44 @@ import org.xml.sax.XMLReader;
  */
 public final class SaxonProvider extends AbstractXmlProvider {
 
+    /**
+     * A Saxon {@link Configuration} that locks down every channel through which Saxon would otherwise reach external resources.
+     *
+     * <p>Three layers of restriction are applied:</p>
+     *
+     * <ol>
+     *   <li><b>SAX layer.</b> Stylesheet and source-document reading is routed to {@link #makeParser} via the {@link #HARDENED} sentinel, which returns an
+     *   {@link XMLReader} from a hardened {@link SAXParserFactory}. DOCTYPE, external entities and XInclude are refused at parse time.</li>
+     *   <li><b>URI-resolution layer.</b> {@link Feature#ALLOWED_PROTOCOLS} is set to the empty string. This blocks XSLT inclusions {@code xsl:include},
+     *   {@code xsl:import}, {@code xsl:source-document}, and the XPath/XSLT functions {@code fn:doc}, {@code fn:document}, {@code fn:unparsed-text},
+     *   {@code fn:collection}, {@code fn:json-doc} and {@code fn:transform}.</li>
+     *   <li><b>Extension-function layer.</b> {@link Feature#ALLOW_EXTERNAL_FUNCTIONS} is disabled, so reflection-based extension calls cannot be used to
+     *       sidestep the URI restrictions.</li>
+     * </ol>
+     */
     private static class HardenedConfiguration extends  Configuration {
         private static final String HARDENED = "hardened";
         private final SAXParserFactory factory;
 
         private HardenedConfiguration(final SAXParserFactory factory) {
             this.factory = factory;
+            // SAX layer: register the HARDENED sentinel for both stylesheet reading and source-document reading. Saxon will call makeParser(HARDENED) below
+            // and receive an XMLReader from the supplied hardened SAXParserFactory.
             setStyleParserClass(HARDENED);
             setSourceParserClass(HARDENED);
+            // Extension-function layer: turn off Saxon's reflection-based extension calls. Without this an attacker could bypass URI restrictions through
+            // user-supplied Java extensions.
             setBooleanProperty(Feature.ALLOW_EXTERNAL_FUNCTIONS, false);
+            // URI-resolution layer: empty string disallows every URI scheme. Saxon front-ends the existing ResourceResolver with a ProtocolRestrictor; a
+            // later setResourceResolver call would cancel this filter, so this stays last in the constructor.
+            setConfigurationProperty(Feature.ALLOWED_PROTOCOLS, "");
         }
 
+        /**
+         * Saxon's hook for instantiating a SAX parser by class name.
+         *
+         * <p>We use the {@value HARDENED} sentinel value to return a hardened parser instead.</p>
+         */
         @Override
         public XMLReader makeParser(String className) throws TransformerFactoryConfigurationError {
             if (HARDENED.equals(className)) {

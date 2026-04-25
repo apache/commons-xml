@@ -19,7 +19,6 @@ package org.apache.commons.xml.factory.attacks;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -27,7 +26,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.xml.factory.internal.CompositeProvider;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -48,9 +47,10 @@ import org.junit.jupiter.api.Test;
  *   <li>{@code unparsed-text(uri)} reading {@code referenced.txt}.</li>
  * </ul>
  *
- * <p>The JDK's built-in XPathFactory and Xalan have no equivalent vectors. Skipped when Saxon is not on the classpath; only runs under the {@code test-saxon}
- * surefire execution.</p>
+ * <p>The JDK's built-in XPathFactory and Xalan have no equivalent vectors. The class is tagged {@code xpath3}, so under the surefire group filters it only
+ * runs in the {@code test-saxon} execution where Saxon is on the classpath.</p>
  */
+@Tag("xpath3")
 class SaxonXPathExternalCallsTest {
 
     private static final String MARKER = "All your base are belong to us";
@@ -95,15 +95,6 @@ class SaxonXPathExternalCallsTest {
 
     private static String jsonDocExpression() {
         return "json-doc('" + AttackTestSupport.resourceUrl("referenced.json") + "')?leaked";
-    }
-
-    @BeforeAll
-    static void requireSaxon() {
-        try {
-            Class.forName(SAXON_XPATH_FACTORY_CLASS);
-        } catch (final ClassNotFoundException e) {
-            assumeTrue(false, "Saxon not on the classpath; skipping Saxon XPath external-call tests");
-        }
     }
 
     /**

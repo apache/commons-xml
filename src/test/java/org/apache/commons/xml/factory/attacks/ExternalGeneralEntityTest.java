@@ -16,6 +16,7 @@
  */
 package org.apache.commons.xml.factory.attacks;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -60,71 +61,85 @@ class ExternalGeneralEntityTest {
     }
 
     @Test
+    @Tag("dom")
     void hardenedDomBlocks() {
         AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("sax")
     void hardenedSaxBlocks() {
         AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void hardenedSchemaBlocks() {
         AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
     }
 
     @Test
+    @Tag("stax")
     void hardenedStaxBlocks() {
         AttackTestSupport.assertStaxBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("trax")
     void hardenedStylesheetBlocks() {
         AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
     }
 
     @Test
+    @Tag("trax")
     void hardenedTransformerBlocks() {
         AttackTestSupport.assertTransformerBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void hardenedValidatorBlocks() {
         AttackTestSupport.assertValidatorBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("dom")
     void unconfiguredDomResolves() {
         AttackTestSupport.assertDomResolves(xmlPayload());
     }
 
     @Test
+    @Tag("sax")
     void unconfiguredSaxResolves() {
         AttackTestSupport.assertSaxResolves(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void unconfiguredSchemaCompiles() {
         AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
     }
 
     @Test
+    @Tag("stax")
     void unconfiguredStaxResolves() {
         AttackTestSupport.assertStaxResolves(xmlPayload());
     }
 
     @Test
+    @Tag("trax")
     void unconfiguredStylesheetCompiles() {
         AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
     }
 
     @Test
+    @Tag("trax")
     void unconfiguredTransformerSucceeds() {
         AttackTestSupport.assertTransformerSucceeds(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void unconfiguredValidatorAccepts() {
         AttackTestSupport.assertValidatorAccepts(xmlPayload());
     }

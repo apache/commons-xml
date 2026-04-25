@@ -113,6 +113,8 @@
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
+              <!-- Run every tagged and untagged test except xpath3, which needs Saxon on the classpath. -->
+              <excludedGroups>xpath3</excludedGroups>
               <classpathDependencyExcludes>
                 <exclude>net.sf.saxon:Saxon-HE</exclude>
               </classpathDependencyExcludes>
@@ -123,6 +125,8 @@
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xerces</reportsDirectory>
+              <!-- Xerces only contributes DOM/SAX/Schema; the rest is JDK-bundled and already covered by test-stockjdk. -->
+              <groups>dom,sax,schema</groups>
               <additionalClasspathDependencies>
                 <dependency>
                   <groupId>xerces</groupId>
@@ -140,6 +144,8 @@
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/woodstox</reportsDirectory>
+              <!-- Woodstox only contributes StAX. -->
+              <groups>stax</groups>
               <additionalClasspathDependencies>
                 <dependency>
                   <groupId>com.fasterxml.woodstox</groupId>
@@ -157,13 +163,8 @@
             <goals><goal>test</goal></goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/saxon</reportsDirectory>
-              <additionalClasspathDependencies>
-                <dependency>
-                  <groupId>net.sf.saxon</groupId>
-                  <artifactId>Saxon-HE</artifactId>
-                  <version>${commons.saxon.version}</version>
-                </dependency>
-              </additionalClasspathDependencies>
+              <!-- Saxon contributes TrAX (transformer + stylesheet) and XPath; xpath3 covers Saxon-only XPath 3.1 functions. -->
+              <groups>trax,xpath3</groups>
             </configuration>
           </execution>
         </executions>

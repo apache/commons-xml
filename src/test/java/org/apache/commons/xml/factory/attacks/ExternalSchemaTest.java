@@ -26,6 +26,7 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.SchemaFactory;
 
 import org.apache.commons.xml.factory.XmlFactories;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -53,6 +54,7 @@ import org.junit.jupiter.api.Test;
  *   <li>{@code xs:redefine schemaLocation="included.xsd"} that extends a complex type from the sibling schema.</li>
  * </ul>
  */
+@Tag("schema")
 class ExternalSchemaTest {
 
     private static void assertSchemaCompileFails(final String resource) {

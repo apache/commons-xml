@@ -27,6 +27,7 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
 import org.apache.commons.xml.factory.XmlFactories;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.Test;
  *   <li>{@code document()} call referencing a sibling XML file, resolved at transform time.</li>
  * </ul>
  */
+@Tag("trax")
 class ExternalStylesheetTest {
 
     private static final String INPUT = "<root/>";

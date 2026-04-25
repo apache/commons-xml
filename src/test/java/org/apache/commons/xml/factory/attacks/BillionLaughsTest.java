@@ -16,6 +16,7 @@
  */
 package org.apache.commons.xml.factory.attacks;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -69,71 +70,85 @@ class BillionLaughsTest {
     }
 
     @Test
+    @Tag("dom")
     void hardenedDomBlocksBillionLaughs() {
         AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("sax")
     void hardenedSaxBlocksBillionLaughs() {
         AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void hardenedSchemaBlocksBillionLaughs() {
         AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
     }
 
     @Test
+    @Tag("stax")
     void hardenedStaxBlocksBillionLaughs() {
         AttackTestSupport.assertStaxBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("trax")
     void hardenedStylesheetBlocksBillionLaughs() {
         AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
     }
 
     @Test
+    @Tag("trax")
     void hardenedTransformerBlocksBillionLaughs() {
         AttackTestSupport.assertTransformerBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void hardenedValidatorBlocksBillionLaughs() {
         AttackTestSupport.assertValidatorBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("dom")
     void unconfiguredDomResolvesBillionLaughs() {
         AttackTestSupport.assertDomResolves(xmlPayload());
     }
 
     @Test
+    @Tag("sax")
     void unconfiguredSaxResolvesBillionLaughs() {
         AttackTestSupport.assertSaxResolves(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void unconfiguredSchemaCompilesBillionLaughs() {
         AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
     }
 
     @Test
+    @Tag("stax")
     void unconfiguredStaxResolvesBillionLaughs() {
         AttackTestSupport.assertStaxResolves(xmlPayload());
     }
 
     @Test
+    @Tag("trax")
     void unconfiguredStylesheetCompilesBillionLaughs() {
         AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
     }
 
     @Test
+    @Tag("trax")
     void unconfiguredTransformerSucceedsBillionLaughs() {
         AttackTestSupport.assertTransformerSucceeds(xmlPayload());
     }
 
     @Test
+    @Tag("schema")
     void unconfiguredValidatorAcceptsBillionLaughs() {
         AttackTestSupport.assertValidatorAccepts(xmlPayload());
     }

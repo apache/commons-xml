@@ -41,6 +41,7 @@ jobs:
     #
     # Temurin does not publish a JDK 8 build for ARM-based macOS runners, so that
     # one combination uses Zulu.
+    name: build (${{ runner.os }}, JDK${{ matrix.java-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 20

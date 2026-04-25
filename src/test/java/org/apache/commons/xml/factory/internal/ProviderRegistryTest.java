@@ -18,11 +18,11 @@ package org.apache.commons.xml.factory.internal;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
 
-import org.apache.commons.xml.factory.UnsupportedXmlImplementationException;
 import org.apache.commons.xml.factory.spi.XmlProvider;
 import org.junit.jupiter.api.Test;
 
@@ -57,12 +57,13 @@ class ProviderRegistryTest {
     }
 
     @Test
-    void providerForUnknownClassThrowsUnsupportedWithClassAttached() {
+    void providerForUnknownClassThrowsHardeningException() {
         final ProviderRegistry registry = new ProviderRegistry(Collections.emptyList());
-        final UnsupportedXmlImplementationException thrown = assertThrows(
-                UnsupportedXmlImplementationException.class,
+        final HardeningException thrown = assertThrows(
+                HardeningException.class,
                 () -> registry.providerFor(String.class));
-        assertSame(String.class, thrown.getUnsupportedFactoryClass());
+        assertTrue(thrown.getMessage().contains(String.class.getName()),
+                "Exception message must name the unsupported class: " + thrown.getMessage());
     }
 
     @Test
@@ -94,7 +95,7 @@ class ProviderRegistryTest {
     @Test
     void emptyBundledListWithNoServiceLoaderProvidersThrows() {
         final ProviderRegistry registry = new ProviderRegistry(Collections.emptyList());
-        assertThrows(UnsupportedXmlImplementationException.class,
+        assertThrows(HardeningException.class,
                 () -> registry.providerFor(Integer.class));
     }
 }

@@ -16,10 +16,7 @@
  */
 package org.apache.commons.xml.factory;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,7 +27,7 @@ import org.apache.commons.xml.factory.internal.ProviderRegistry;
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies that an unknown factory class surfaces {@link UnsupportedXmlImplementationException} with the class attached.
+ * Verifies that an unknown factory class surfaces {@link IllegalStateException} with a message naming the class and pointing at the remediation path.
  */
 class UnsupportedXmlImplementationTest {
 
@@ -67,10 +64,9 @@ class UnsupportedXmlImplementationTest {
 
     @Test
     void registryRejectsUnknownFactory() {
-        final UnsupportedXmlImplementationException thrown = assertThrows(
-                UnsupportedXmlImplementationException.class,
+        final IllegalStateException thrown = assertThrows(
+                IllegalStateException.class,
                 () -> ProviderRegistry.getInstance().providerFor(FakeDocumentBuilderFactory.class));
-        assertSame(FakeDocumentBuilderFactory.class, thrown.getUnsupportedFactoryClass());
         assertNotNull(thrown.getMessage());
         assertTrue(thrown.getMessage().contains(FakeDocumentBuilderFactory.class.getName()),
                 "Exception message must name the unsupported class: " + thrown.getMessage());

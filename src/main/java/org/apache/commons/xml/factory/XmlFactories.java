@@ -70,7 +70,8 @@ public final class XmlFactories {
      * <p>Together these block <strong>every</strong> external reference the parser would follow while reading a document through this factory.</p>
      *
      * @return a hardened factory.
-     * @throws UnsupportedXmlImplementationException if the underlying JAXP implementation is not recognised by any registered {@link XmlProvider}.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying JAXP implementation, or if the recognised provider cannot
+     *         apply the hardening settings to it.
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -91,7 +92,8 @@ public final class XmlFactories {
      * <p>Together these block <strong>every</strong> external reference the parser would follow while reading a document through this factory.</p>
      *
      * @return a hardened factory.
-     * @throws UnsupportedXmlImplementationException if the underlying JAXP implementation is not recognised by any registered {@link XmlProvider}.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying JAXP implementation, or if the recognised provider cannot
+     *         apply the hardening settings to it.
      */
     public static SAXParserFactory newSAXParserFactory() {
         final SAXParserFactory factory = SAXParserFactory.newInstance();
@@ -122,7 +124,8 @@ public final class XmlFactories {
      * above.</p>
      *
      * @return a hardened factory.
-     * @throws UnsupportedXmlImplementationException if the underlying Schema implementation is not recognised by any registered {@link XmlProvider}.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying Schema implementation, or if the recognised provider cannot
+     *         apply the hardening settings to it.
      */
     public static SchemaFactory newSchemaFactory() {
         final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
@@ -150,7 +153,8 @@ public final class XmlFactories {
      * {@link javax.xml.transform.sax.SAXSource}.</p>
      *
      * @return a hardened factory.
-     * @throws UnsupportedXmlImplementationException if the underlying TrAX implementation is not recognised by any registered {@link XmlProvider}.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying TrAX implementation, or if the recognised provider cannot
+     *         apply the hardening settings to it.
      */
     public static TransformerFactory newTransformerFactory() {
         final TransformerFactory factory = TransformerFactory.newInstance();
@@ -176,7 +180,8 @@ public final class XmlFactories {
      * {@link XMLInputFactory#IS_VALIDATING}.</p>
      *
      * @return a hardened factory.
-     * @throws UnsupportedXmlImplementationException if the underlying StAX implementation is not recognised by any registered {@link XmlProvider}.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying StAX implementation, or if the recognised provider cannot
+     *         apply the hardening settings to it.
      */
     public static XMLInputFactory newXMLInputFactory() {
         final XMLInputFactory factory = XMLInputFactory.newInstance();
@@ -196,7 +201,8 @@ public final class XmlFactories {
      * underlying implementation honours the flag.</p>
      *
      * @return a hardened factory.
-     * @throws UnsupportedXmlImplementationException if the underlying XPath implementation is not recognised by any registered {@link XmlProvider}.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying XPath implementation, or if the recognised provider cannot
+     *         apply the hardening settings to it.
      */
     public static XPathFactory newXPathFactory() {
         final XPathFactory factory = XPathFactory.newInstance();

@@ -65,7 +65,7 @@ stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying im
 
 Out of the box the library recognises the stock JDK JAXP implementations, Apache Xerces 2.x, Woodstox, and Saxon-HE. If
 a factory resolves to an implementation not covered by any bundled or registered provider, every `XmlFactories` method
-throws `UnsupportedXmlImplementationException`.
+throws `IllegalStateException` with a message naming the unsupported class.
 
 Support for additional implementations can be plugged in by publishing an
 `org.apache.commons.xml.factory.spi.XmlProvider` through the standard Java `ServiceLoader` mechanism. Bundled providers

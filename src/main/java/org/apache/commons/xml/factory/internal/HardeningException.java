@@ -17,16 +17,26 @@
 package org.apache.commons.xml.factory.internal;
 
 /**
- * Thrown when a provider cannot fully harden a factory.
+ * Thrown when a factory cannot be hardened.
  *
- * <p>The message names the specific feature or property that failed; the cause is the original checked or unchecked exception from the JAXP
- * implementation.</p>
+ * <p>Two failure modes share this type:</p>
+ * <ul>
+ *   <li>No registered {@link org.apache.commons.xml.factory.spi.XmlProvider XmlProvider} recognises the concrete factory class.</li>
+ *   <li>A recognised provider tried to apply a hardening setting and the implementation rejected it.</li>
+ * </ul>
+ *
+ * <p>The message names the unsupported factory class or the specific feature, attribute or property that failed; the cause, when present, is the original
+ * checked or unchecked exception from the JAXP implementation.</p>
  *
  * <p>Package-private by design: callers should catch {@link IllegalStateException}, which this extends.</p>
  */
 class HardeningException extends IllegalStateException {
 
     private static final long serialVersionUID = 1L;
+
+    HardeningException(final String message) {
+        super(message);
+    }
 
     HardeningException(final String message, final Throwable cause) {
         super(message, cause);

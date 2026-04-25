@@ -25,7 +25,6 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.commons.xml.factory.UnsupportedXmlImplementationException;
 import org.apache.commons.xml.factory.spi.XmlProvider;
 
 /**
@@ -36,7 +35,7 @@ import org.apache.commons.xml.factory.spi.XmlProvider;
  * <ol>
  *   <li>Bundled providers in a fixed order: {@link StockJdkProvider}, {@link XercesProvider}, {@link WoodstoxProvider}, {@link SaxonProvider}.</li>
  *   <li>Third-party providers discovered via {@link ServiceLoader}, in the order {@link ServiceLoader} yields them.</li>
- *   <li>If nothing matches, {@link UnsupportedXmlImplementationException}.</li>
+ *   <li>If nothing matches, {@link HardeningException}.</li>
  * </ol>
  *
  * <p>Bundled providers are consulted first so that a third-party provider on the classpath cannot intercept hardening of a factory class this library already
@@ -76,7 +75,7 @@ public final class ProviderRegistry {
      *
      * @param factoryClass the concrete factory class; never {@code null}.
      * @return the matching provider.
-     * @throws UnsupportedXmlImplementationException if no provider matches.
+     * @throws HardeningException if no provider matches.
      */
     public XmlProvider providerFor(final Class<?> factoryClass) {
         Objects.requireNonNull(factoryClass);
@@ -94,7 +93,10 @@ public final class ProviderRegistry {
                 return provider;
             }
         }
-        throw new UnsupportedXmlImplementationException(factoryClass);
+        throw new HardeningException(String.format(
+                "No XmlProvider supports JAXP factory class %s. Add a supported JAXP implementation to the classpath, "
+                        + "or register a custom XmlProvider via ServiceLoader.",
+                factoryClass.getName()));
     }
 
     private static List<XmlProvider> bundledProviders() {

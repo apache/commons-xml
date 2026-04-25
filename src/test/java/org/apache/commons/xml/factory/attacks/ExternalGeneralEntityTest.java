@@ -18,6 +18,23 @@ package org.apache.commons.xml.factory.attacks;
 
 import org.junit.jupiter.api.Test;
 
+/**
+ * Checks whether parsers can pull in an external general entity declared inline in the internal subset.
+ *
+ * <p>The wrapper declares {@code <!ENTITY xxe SYSTEM "file:.../referenced.txt">} and uses {@code &xxe;} in the body. The general entity expands to the
+ * content of {@code src/test/resources/leaked/referenced.txt} when the external reference is resolved. A hardened parser refuses the fetch, {@code &xxe;} is
+ * undefined, and the parse throws; an unconfigured parser fetches the file, the entity resolves, and the parse succeeds.</p>
+ *
+ * <p>Each parser type is exercised twice as a pair (unconfigured factory, expected to parse; hardened factory, expected to throw):</p>
+ *
+ * <ul>
+ *   <li>DOM, SAX and StAX direct XML parsing.</li>
+ *   <li>{@code SchemaFactory.newSchema(Source)} compilation of an XSD whose source has the entity-bearing DOCTYPE.</li>
+ *   <li>{@link javax.xml.validation.Validator#validate(javax.xml.transform.Source)} of an instance whose source has the entity-bearing DOCTYPE.</li>
+ *   <li>Identity {@code Transformer} reading the input XML.</li>
+ *   <li>{@code TransformerFactory.newTransformer(Source)} compilation of a stylesheet whose source has the entity-bearing DOCTYPE.</li>
+ * </ul>
+ */
 class ExternalGeneralEntityTest {
 
     private static final String INSERTION = "&xxe;";
@@ -25,43 +42,90 @@ class ExternalGeneralEntityTest {
     private static String withDoctype(final String rootQName, final String body) {
         return "<?xml version=\"1.0\"?>\n"
                 + "<!DOCTYPE " + rootQName + " [\n"
-                + "  <!ENTITY xxe SYSTEM \"" + Payloads.UNREACHABLE_FILE + "\">\n"
+                + "  <!ENTITY xxe SYSTEM \"" + AttackTestSupport.resourceUrl("referenced.txt") + "\">\n"
                 + "]>\n"
                 + body + "\n";
     }
 
-    @Test
-    void domBlocks() {
-        AttackTestSupport.assertDomBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    private static String xmlPayload() {
+        return withDoctype("root", Payloads.xmlBody(INSERTION));
+    }
+
+    private static String xsdPayload() {
+        return withDoctype("xs:schema", Payloads.xsdBody(INSERTION));
+    }
+
+    private static String xsltPayload() {
+        return withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION));
     }
 
     @Test
-    void saxBlocks() {
-        AttackTestSupport.assertSaxBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedDomBlocks() {
+        AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
-    void schemaFactoryBlocks() {
-        AttackTestSupport.assertSchemaCompilationBlocks(withDoctype("xs:schema", Payloads.xsdBody(INSERTION)));
+    void hardenedSaxBlocks() {
+        AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
     @Test
-    void staxBlocks() {
-        AttackTestSupport.assertStaxBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedSchemaBlocks() {
+        AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
     }
 
     @Test
-    void transformerBlocks() {
-        AttackTestSupport.assertTransformerBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedStaxBlocks() {
+        AttackTestSupport.assertStaxBlocks(xmlPayload());
     }
 
     @Test
-    void transformerStylesheetBlocks() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION)));
+    void hardenedStylesheetBlocks() {
+        AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
     }
 
     @Test
-    void validatorBlocks() {
-        AttackTestSupport.assertValidatorBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedTransformerBlocks() {
+        AttackTestSupport.assertTransformerBlocks(xmlPayload());
+    }
+
+    @Test
+    void hardenedValidatorBlocks() {
+        AttackTestSupport.assertValidatorBlocks(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredDomResolves() {
+        AttackTestSupport.assertDomResolves(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredSaxResolves() {
+        AttackTestSupport.assertSaxResolves(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredSchemaCompiles() {
+        AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
+    }
+
+    @Test
+    void unconfiguredStaxResolves() {
+        AttackTestSupport.assertStaxResolves(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredStylesheetCompiles() {
+        AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
+    }
+
+    @Test
+    void unconfiguredTransformerSucceeds() {
+        AttackTestSupport.assertTransformerSucceeds(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredValidatorAccepts() {
+        AttackTestSupport.assertValidatorAccepts(xmlPayload());
     }
 }

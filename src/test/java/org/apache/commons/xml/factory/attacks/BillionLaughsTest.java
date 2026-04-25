@@ -18,56 +18,123 @@ package org.apache.commons.xml.factory.attacks;
 
 import org.junit.jupiter.api.Test;
 
+/**
+ * Checks whether parsers reject a Billion Laughs payload (nested entity expansion in the internal DTD subset).
+ *
+ * <p>The payload nests four levels of 16/15x expansion ({@code lol1} through {@code lol4}), so resolving {@code &lol4;} produces
+ * {@code 15 * 16 * 16 * 16 = 61440} leaf {@code &lol;} expansions and a total of {@code 1 + 15 + 240 + 3840 + 61440 = 65536} entity-expansion events. That is
+ * just over the JDK's default {@code jdk.xml.entityExpansionLimit = 64000}, so a parser with the limit enforced rejects the payload, and a parser with the
+ * limit disabled materialises only ~60 KB of {@code "A"} text and finishes immediately.</p>
+ *
+ * <p>Why a single character {@code "A"} and only 15x at the outer level: XSLTC compiles a stylesheet's expanded text into a JVM string constant, which is
+ * capped at 65535 bytes. A larger expansion makes {@code newTransformer(stylesheet)} fail with a misleading "GregorSamsa" stub-class error even when entity
+ * limits are disabled, so the payload is sized to stay just under that ceiling.</p>
+ *
+ * <p>Each parser type is exercised twice as a pair (unconfigured factory, expected to parse; hardened factory, expected to throw):</p>
+ *
+ * <ul>
+ *   <li>The {@code hardened*} side runs the payload through {@link org.apache.commons.xml.factory.XmlFactories} and asserts the parse throws. Hardening blocks
+ *       at whichever layer fires first (DOCTYPE-disallow on DOM/SAX, FSP plus propagated entity-expansion limits elsewhere).</li>
+ *   <li>The {@code unconfigured*} side runs the payload through a default factory with {@code FEATURE_SECURE_PROCESSING=false} and asserts the parse succeeds.
+ *       Disabling FSP turns off the JDK's entity-expansion limit, which is the only safety net stopping a default factory from materialising the expansion.
+ *       The {@code unconfigured*} name is slightly euphemistic here: the factory is actively configured to be permissive, not "left alone".</li>
+ * </ul>
+ */
 class BillionLaughsTest {
 
-    private static final String INSERTION = "&lol6;";
+    private static final String INSERTION = "&lol4;";
 
     private static String withDoctype(final String rootQName, final String body) {
         return "<?xml version=\"1.0\"?>\n"
                 + "<!DOCTYPE " + rootQName + " [\n"
-                + "  <!ENTITY lol \"lol\">\n"
-                + "  <!ENTITY lol1 \"&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;\">\n"
-                + "  <!ENTITY lol2 \"&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;\">\n"
-                + "  <!ENTITY lol3 \"&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;\">\n"
-                + "  <!ENTITY lol4 \"&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;\">\n"
-                + "  <!ENTITY lol5 \"&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;\">\n"
-                + "  <!ENTITY lol6 \"&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;\">\n"
+                + "  <!ENTITY lol \"A\">\n"
+                + "  <!ENTITY lol1 \"&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;\">\n"
+                + "  <!ENTITY lol2 \"&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;\">\n"
+                + "  <!ENTITY lol3 \"&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;\">\n"
+                + "  <!ENTITY lol4 \"&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;\">\n"
                 + "]>\n"
                 + body + "\n";
     }
 
-    @Test
-    void domBlocksBillionLaughs() {
-        AttackTestSupport.assertDomBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    private static String xmlPayload() {
+        return withDoctype("root", Payloads.xmlBody(INSERTION));
+    }
+
+    private static String xsdPayload() {
+        return withDoctype("xs:schema", Payloads.xsdBody(INSERTION));
+    }
+
+    private static String xsltPayload() {
+        return withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION));
     }
 
     @Test
-    void saxBlocksBillionLaughs() {
-        AttackTestSupport.assertSaxBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedDomBlocksBillionLaughs() {
+        AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
-    void schemaFactoryBlocksBillionLaughs() {
-        AttackTestSupport.assertSchemaCompilationBlocks(withDoctype("xs:schema", Payloads.xsdBody(INSERTION)));
+    void hardenedSaxBlocksBillionLaughs() {
+        AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
     @Test
-    void staxBlocksBillionLaughs() {
-        AttackTestSupport.assertStaxBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedSchemaBlocksBillionLaughs() {
+        AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
     }
 
     @Test
-    void transformerBlocksBillionLaughs() {
-        AttackTestSupport.assertTransformerBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedStaxBlocksBillionLaughs() {
+        AttackTestSupport.assertStaxBlocks(xmlPayload());
     }
 
     @Test
-    void transformerStylesheetBlocksBillionLaughs() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION)));
+    void hardenedStylesheetBlocksBillionLaughs() {
+        AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
     }
 
     @Test
-    void validatorBlocksBillionLaughs() {
-        AttackTestSupport.assertValidatorBlocks(withDoctype("root", Payloads.xmlBody(INSERTION)));
+    void hardenedTransformerBlocksBillionLaughs() {
+        AttackTestSupport.assertTransformerBlocks(xmlPayload());
+    }
+
+    @Test
+    void hardenedValidatorBlocksBillionLaughs() {
+        AttackTestSupport.assertValidatorBlocks(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredDomResolvesBillionLaughs() {
+        AttackTestSupport.assertDomResolves(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredSaxResolvesBillionLaughs() {
+        AttackTestSupport.assertSaxResolves(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredSchemaCompilesBillionLaughs() {
+        AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
+    }
+
+    @Test
+    void unconfiguredStaxResolvesBillionLaughs() {
+        AttackTestSupport.assertStaxResolves(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredStylesheetCompilesBillionLaughs() {
+        AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
+    }
+
+    @Test
+    void unconfiguredTransformerSucceedsBillionLaughs() {
+        AttackTestSupport.assertTransformerSucceeds(xmlPayload());
+    }
+
+    @Test
+    void unconfiguredValidatorAcceptsBillionLaughs() {
+        AttackTestSupport.assertValidatorAccepts(xmlPayload());
     }
 }

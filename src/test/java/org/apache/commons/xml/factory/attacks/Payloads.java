@@ -17,7 +17,7 @@
 package org.apache.commons.xml.factory.attacks;
 
 /**
- * Shared building blocks for attack-test payloads: unreachable-URI constants, benign reference documents, and body-shape helpers for XML, XSLT and XSD.
+ * Shared building blocks for attack-test payloads: a benign reference schema and body-shape helpers for XML, XSLT and XSD.
  *
  * <p>Each attack test class combines one of the body-shape helpers with an attack-specific DOCTYPE prologue of its own.</p>
  */
@@ -35,12 +35,6 @@ final class Payloads {
             + "    </xs:complexType>\n"
             + "  </xs:element>\n"
             + "</xs:schema>\n";
-
-    /** A file URI that cannot exist on any reasonable filesystem. */
-    static final String UNREACHABLE_FILE = "file:/dev/null/nonexistent/evil.dtd";
-
-    /** An unreachable HTTP URI: TCP connect to localhost:1 rejects quickly. */
-    static final String UNREACHABLE_HTTP = "http://127.0.0.1:1/evil.dtd";
 
     private Payloads() {
     }

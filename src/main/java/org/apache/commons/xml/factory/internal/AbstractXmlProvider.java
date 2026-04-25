@@ -141,6 +141,23 @@ abstract class AbstractXmlProvider implements XmlProvider {
             throw fail(factory, "property", property, e);
         }
     }
+
+    static void setProperty(final Validator validator, final String property, final Object value) {
+        try {
+            validator.setProperty(property, value);
+        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+            throw fail(validator, "property", property, e);
+        }
+    }
+
+    static void setProperty(final ValidatorHandler handler, final String property, final Object value) {
+        try {
+            handler.setProperty(property, value);
+        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+            throw fail(handler, "property", property, e);
+        }
+    }
+
     private final Set<String> supported;
 
     protected AbstractXmlProvider(final String... supportedClassNames) {

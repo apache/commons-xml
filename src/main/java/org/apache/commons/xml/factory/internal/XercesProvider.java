@@ -80,16 +80,19 @@ public final class XercesProvider extends AbstractXmlProvider {
 
         private final Schema delegate;
         private final LSResourceResolver resolver;
+        private final Object securityManager;
 
-        HardeningSchema(final Schema delegate, final LSResourceResolver resolver) {
+        HardeningSchema(final Schema delegate, final LSResourceResolver resolver, final Object securityManager) {
             this.delegate = delegate;
             this.resolver = resolver;
+            this.securityManager = securityManager;
         }
 
         @Override
         public Validator newValidator() {
             final Validator validator = delegate.newValidator();
             setFeature(validator, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            setProperty(validator, XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
             validator.setResourceResolver(resolver);
             return validator;
         }
@@ -98,6 +101,7 @@ public final class XercesProvider extends AbstractXmlProvider {
         public ValidatorHandler newValidatorHandler() {
             final ValidatorHandler handler = delegate.newValidatorHandler();
             setFeature(handler, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            setProperty(handler, XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
             handler.setResourceResolver(resolver);
             return handler;
         }
@@ -111,9 +115,11 @@ public final class XercesProvider extends AbstractXmlProvider {
     private static final class HardeningSchemaFactory extends SchemaFactory {
 
         private final SchemaFactory delegate;
+        private final Object securityManager;
 
-        HardeningSchemaFactory(final SchemaFactory delegate) {
+        HardeningSchemaFactory(final SchemaFactory delegate, final Object securityManager) {
             this.delegate = delegate;
+            this.securityManager = securityManager;
         }
 
         @Override
@@ -143,12 +149,12 @@ public final class XercesProvider extends AbstractXmlProvider {
 
         @Override
         public Schema newSchema() throws SAXException {
-            return new HardeningSchema(delegate.newSchema(), delegate.getResourceResolver());
+            return new HardeningSchema(delegate.newSchema(), delegate.getResourceResolver(), securityManager);
         }
 
         @Override
         public Schema newSchema(final Source[] schemas) throws SAXException {
-            return new HardeningSchema(delegate.newSchema(schemas), delegate.getResourceResolver());
+            return new HardeningSchema(delegate.newSchema(schemas), delegate.getResourceResolver(), securityManager);
         }
 
         @Override
@@ -175,12 +181,45 @@ public final class XercesProvider extends AbstractXmlProvider {
     private static final String FEATURE_DISALLOW_DOCTYPE = "http://apache.org/xml/features/disallow-doctype-decl";
 
     /**
+     * Xerces-specific factory/validator property whose value is an {@code org.apache.xerces.util.SecurityManager} instance carrying processing-limit
+     * thresholds (entity-expansion limit, max occur limit, and so on).
+     */
+    private static final String XERCES_SECURITY_MANAGER_PROPERTY = "http://apache.org/xml/properties/security-manager";
+
+    /**
+     * Reads an integer JDK XML limit from the named system property, falling back to {@code defaultValue} if unset, blank, or unparsable.
+     */
+    private static int jdkLimit(final String systemPropertyName, final int defaultValue) {
+        final String raw = System.getProperty(systemPropertyName);
+        if (raw == null || raw.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (final NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private final Object securityManager;
+
+    /**
      * Default constructor; invoked by {@link java.util.ServiceLoader} and the registry.
      */
     public XercesProvider() {
         super("org.apache.xerces.jaxp.DocumentBuilderFactoryImpl",
                 "org.apache.xerces.jaxp.SAXParserFactoryImpl",
                 "org.apache.xerces.jaxp.validation.XMLSchemaFactory");
+        Object sm;
+        try {
+            final Class<?> clazz = Class.forName("org.apache.xerces.util.SecurityManager");
+            sm = clazz.getDeclaredConstructor().newInstance();
+            clazz.getMethod("setEntityExpansionLimit", int.class).invoke(sm, jdkLimit("jdk.xml.entityExpansionLimit", 64000));
+            clazz.getMethod("setMaxOccurNodeLimit", int.class).invoke(sm, jdkLimit("jdk.xml.maxOccurLimit", 5000));
+        } catch (final ReflectiveOperationException e) {
+            sm = null;
+        }
+        this.securityManager = sm;
     }
 
     @Override
@@ -209,6 +248,6 @@ public final class XercesProvider extends AbstractXmlProvider {
         // Blocks xs:import/xs:include/xs:redefine resolution during schema compilation. The same resolver is captured at schema-creation time and re-installed
         // on every Validator/ValidatorHandler produced from the resulting Schema (see HardeningSchema), because Xerces does not propagate it automatically.
         factory.setResourceResolver(DenyAllResourceResolver.INSTANCE);
-        return new HardeningSchemaFactory(factory);
+        return new HardeningSchemaFactory(factory, securityManager);
     }
 }

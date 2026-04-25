@@ -38,6 +38,15 @@ public final class StockJdkProvider extends AbstractXmlProvider {
     private static final String FEATURE_DISALLOW_DOCTYPE =
             "http://apache.org/xml/features/disallow-doctype-decl";
 
+    /**
+     * Pins TransformerFactory, XPathFactory and SchemaFactory to the JDK's bundled JAXP parser.
+     *
+     * <p>With this set to {@code false} the factories use {@code SAXParserFactoryImpl} directly when they need an internal {@link org.xml.sax.XMLReader};
+     * with {@code true} they would route through {@link javax.xml.parsers.SAXParserFactory#newInstance()} and pick up whatever third-party parser is on the
+     * classpath.</p>
+     */
+    private static final String FEATURE_OVERRIDE_DEFAULT_PARSER = "jdk.xml.overrideDefaultParser";
+
     /** Default constructor; invoked by {@link java.util.ServiceLoader} and the registry. */
     public StockJdkProvider() {
         super("com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl",
@@ -85,11 +94,10 @@ public final class StockJdkProvider extends AbstractXmlProvider {
 
     @Override
     public TransformerFactory configure(final TransformerFactory factory) {
+        // Pin the internal SAX parser to the JDK's bundled implementation; see FEATURE_OVERRIDE_DEFAULT_PARSER.
+        setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
+        // The following properties are used to configure the SAX parsers
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Defence-in-depth: FSP already tightens these to the empty string on the JDK's XMLSecurityManager path. They only fire if the caller turns FSP off
-        // on the returned factory; the default resolver then consults them and refuses the fetch before any I/O.
-        //   - ACCESS_EXTERNAL_DTD:        protocols allowed for external DTDs referenced by DOCTYPE SYSTEM in the stylesheet or XML input.
-        //   - ACCESS_EXTERNAL_STYLESHEET: protocols allowed for xsl:import, xsl:include and document() URIs during compile and transform.
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
         return factory;
@@ -97,18 +105,19 @@ public final class StockJdkProvider extends AbstractXmlProvider {
 
     @Override
     public XPathFactory configure(final XPathFactory factory) {
+        // Pin the internal SAX parser to the JDK's bundled implementation; see FEATURE_OVERRIDE_DEFAULT_PARSER.
+        setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
+        // The following properties are used to configure the SAX parsers
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         return factory;
     }
 
     @Override
     public SchemaFactory configure(final SchemaFactory factory) {
+        // Pin the internal SAX parser to the JDK's bundled implementation; see FEATURE_OVERRIDE_DEFAULT_PARSER.
+        setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
+        // The following properties are used to configure the SAX parsers
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Defence-in-depth: FSP already tightens these to the empty string on the JDK's XMLSecurityManager path. They only fire if the caller turns FSP off
-        // on the returned factory; the default resolver then consults them and refuses the fetch before any I/O. The settings propagate into Validators
-        // created from the compiled Schema.
-        //   - ACCESS_EXTERNAL_DTD:    protocols allowed for external DTDs declared by DOCTYPE SYSTEM in the schema or in a validated instance.
-        //   - ACCESS_EXTERNAL_SCHEMA: protocols allowed for xs:import, xs:include and xs:redefine schemaLocation URIs during schema compilation.
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
         return factory;

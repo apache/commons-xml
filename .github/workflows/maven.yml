@@ -1,0 +1,92 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Java CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request: { }
+
+# Default-deny at the workflow scope; any job that needs a token grants it on the job itself.
+permissions: { }
+
+# Cancel in-progress runs when a newer commit lands on the same PR; pushes to main run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+
+    # JDK coverage across all current LTS versions and all three OSes, but sparingly:
+    #
+    # - On ubuntu-latest we run every LTS (8, 11, 17, 21, 25).
+    # - On windows-latest and macos-latest we run only the endpoints (8 and 25),
+    #   since cross-OS regressions almost always surface at the version endpoints
+    #   rather than in between.
+    #
+    # Temurin does not publish a JDK 8 build for ARM-based macOS runners, so that
+    # one combination uses Zulu.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 20
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        java-version: [ 8, 25 ]
+        distribution: [ temurin ]
+        exclude:
+          - os: macos-latest
+            java-version: 8
+        include:
+          - os: macos-latest
+            java-version: 8
+            distribution: zulu
+          - os: ubuntu-latest
+            java-version: 11
+            distribution: temurin
+          - os: ubuntu-latest
+            java-version: 17
+            distribution: temurin
+          - os: ubuntu-latest
+            java-version: 21
+            distribution: temurin
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: ${{ matrix.distribution }}
+          java-version: ${{ matrix.java-version }}
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn --errors --show-version --batch-mode --no-transfer-progress
+
+      - name: Upload Surefire reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: surefire-reports-${{ matrix.os }}-jdk${{ matrix.java-version }}
+          path: '**/target/surefire-reports/'
+          if-no-files-found: ignore
+          retention-days: 14

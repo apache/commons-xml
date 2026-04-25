@@ -17,11 +17,13 @@
 package org.apache.commons.xml.factory.attacks;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -191,6 +193,18 @@ final class AttackTestSupport {
 
     private static InputSource inputSource(final String xml) {
         return new InputSource(new StringReader(xml));
+    }
+
+    /**
+     * Returns the URL of a fixture under {@code src/test/resources/leaked/} on the test classpath. Fails the test if the resource is not present.
+     *
+     * @param name the file name within the {@code leaked} directory, for example {@code "referenced.xml"}.
+     * @return a URL that can be used as a system id, opened for reading, or string-concatenated into an XPath URI.
+     */
+    static URL resourceUrl(final String name) {
+        final URL url = AttackTestSupport.class.getResource("/leaked/" + name);
+        assertNotNull(url, "test resource not found: " + name);
+        return url;
     }
 
     private static boolean messageOrCauseContainsHardeningKeyword(final Throwable t) {

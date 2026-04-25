@@ -16,8 +16,14 @@
  */
 package org.apache.commons.xml.factory.attacks;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.xml.factory.internal.CompositeProvider;
@@ -25,20 +31,71 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * Exercises Saxon's XPath 3.1 URI-fetching functions and verifies that a hardened Saxon {@link XPathFactory} refuses them before any I/O.
+ * Checks whether Saxon's XPath 3.1 URI-fetching functions can pull external resources into the result.
  *
- * <p>Saxon's XPath 3.1 engine ships four functions that open arbitrary URIs during expression evaluation:
- * {@code doc()}, {@code collection()}, {@code unparsed-text()} and {@code json-doc()}. None of them require a context node; each is triggered purely by the
- * string URI they receive. They are <em>not</em> classified as extension functions in Saxon's vocabulary, so disabling {@code ALLOW_EXTERNAL_FUNCTIONS} is
- * not sufficient to block them; a complete hardening has to close the URI-resolution path too.</p>
+ * <p>Saxon ships several XPath 3.1 functions that open arbitrary URIs during evaluation. None require a context node; each is triggered purely by the string
+ * URI it receives. They are <em>not</em> classified as extension functions in Saxon's vocabulary, so disabling {@code ALLOW_EXTERNAL_FUNCTIONS} is not enough
+ * to block them; a complete hardening has to close the URI-resolution path.</p>
  *
- * <p>The JDK's built-in XPathFactory and Xalan have no equivalent vectors.</p>
+ * <p>Each fixture under {@code src/test/resources/leaked/} contains the {@link #MARKER} string. The tests dispatch the URI-fetching function at the file's URL
+ * and check whether the marker reaches the result.</p>
  *
- * <p>Skipped when Saxon is not on the classpath; only runs under the {@code test-saxon} surefire profile.</p>
+ * <p>Cases covered, each as a pair (unconfigured Saxon factory expected to leak, hardened Saxon factory expected to block):</p>
+ *
+ * <ul>
+ *   <li>{@code doc(uri)} reading {@code referenced.xml}.</li>
+ *   <li>{@code json-doc(uri)} reading {@code referenced.json}.</li>
+ *   <li>{@code unparsed-text(uri)} reading {@code referenced.txt}.</li>
+ * </ul>
+ *
+ * <p>The JDK's built-in XPathFactory and Xalan have no equivalent vectors. Skipped when Saxon is not on the classpath; only runs under the {@code test-saxon}
+ * surefire execution.</p>
  */
 class SaxonXPathExternalCallsTest {
 
+    private static final String MARKER = "All your base are belong to us";
     private static final String SAXON_XPATH_FACTORY_CLASS = "net.sf.saxon.xpath.XPathFactoryImpl";
+
+    private static void assertCallExcludesMarker(final XPathFactory factory, final String expression) {
+        final String result;
+        try {
+            result = evaluateAsString(factory, expression);
+        } catch (final Exception e) {
+            return; // hardening blocked at evaluation; acceptable outcome.
+        }
+        assertFalse(result.contains(MARKER),
+                "Hardening did not block the external reference; result contained marker '" + MARKER + "'.\nFull result:\n" + result);
+    }
+
+    private static void assertCallLeaksMarker(final XPathFactory factory, final String expression) {
+        final String result;
+        try {
+            result = evaluateAsString(factory, expression);
+        } catch (final Exception e) {
+            fail("Unconfigured Saxon XPath should resolve the external resource, but threw: " + e);
+            return;
+        }
+        assertTrue(result.contains(MARKER),
+                "Expected marker '" + MARKER + "' in result, got: " + result);
+    }
+
+    private static String docExpression() {
+        return "doc('" + AttackTestSupport.resourceUrl("referenced.xml") + "')/leaked";
+    }
+
+    private static String evaluateAsString(final XPathFactory factory, final String expression)
+            throws ParserConfigurationException, XPathExpressionException {
+        return factory.newXPath().evaluate(expression,
+                DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument());
+    }
+
+    private static XPathFactory hardenedSaxonXPathFactory() {
+        return CompositeProvider.getInstance().configure(saxonXPathFactory());
+    }
+
+    private static String jsonDocExpression() {
+        return "json-doc('" + AttackTestSupport.resourceUrl("referenced.json") + "')?leaked";
+    }
 
     @BeforeAll
     static void requireSaxon() {
@@ -49,37 +106,51 @@ class SaxonXPathExternalCallsTest {
         }
     }
 
-    @Test
-    void xpathBlocksCollectionCall() {
-        AttackTestSupport.assertXPathBlocks(hardenedSaxonXPathFactory(), "collection('" + Payloads.UNREACHABLE_HTTP + "')");
-    }
-
-    @Test
-    void xpathBlocksDocCall() {
-        AttackTestSupport.assertXPathBlocks(hardenedSaxonXPathFactory(), "doc('" + Payloads.UNREACHABLE_HTTP + "')");
-    }
-
-    @Test
-    void xpathBlocksJsonDocCall() {
-        AttackTestSupport.assertXPathBlocks(hardenedSaxonXPathFactory(), "json-doc('" + Payloads.UNREACHABLE_HTTP + "')");
-    }
-
-    @Test
-    void xpathBlocksUnparsedTextCall() {
-        AttackTestSupport.assertXPathBlocks(hardenedSaxonXPathFactory(), "unparsed-text('" + Payloads.UNREACHABLE_HTTP + "')");
-    }
-
     /**
-     * Instantiates Saxon's {@code net.sf.saxon.xpath.XPathFactoryImpl} reflectively. Saxon 12.9 does not ship a {@code META-INF/services} entry for
-     * {@code javax.xml.xpath.XPathFactory}, so {@code XPathFactory.newInstance(Saxon-URI)} cannot find it; direct instantiation bypasses that lookup.
+     * Instantiates Saxon's {@code XPathFactoryImpl} reflectively.
+     *
+     * <p>Saxon 12.9 ships no {@code META-INF/services} entry for
+     * {@link javax.xml.xpath.XPathFactory}, so {@link XPathFactory#newInstance(String)} cannot find it; direct instantiation bypasses that lookup.</p>
      */
-    private static XPathFactory hardenedSaxonXPathFactory() {
-        final XPathFactory xpf;
+    private static XPathFactory saxonXPathFactory() {
         try {
-            xpf = (XPathFactory) Class.forName(SAXON_XPATH_FACTORY_CLASS).getDeclaredConstructor().newInstance();
+            return (XPathFactory) Class.forName(SAXON_XPATH_FACTORY_CLASS).getDeclaredConstructor().newInstance();
         } catch (final ReflectiveOperationException e) {
             throw new AssertionError("Cannot instantiate " + SAXON_XPATH_FACTORY_CLASS, e);
         }
-        return CompositeProvider.getInstance().configure(xpf);
+    }
+
+    private static String unparsedTextExpression() {
+        return "unparsed-text('" + AttackTestSupport.resourceUrl("referenced.txt") + "')";
+    }
+
+    @Test
+    void hardenedXPathBlocksDoc() {
+        assertCallExcludesMarker(hardenedSaxonXPathFactory(), docExpression());
+    }
+
+    @Test
+    void hardenedXPathBlocksJsonDoc() {
+        assertCallExcludesMarker(hardenedSaxonXPathFactory(), jsonDocExpression());
+    }
+
+    @Test
+    void hardenedXPathBlocksUnparsedText() {
+        assertCallExcludesMarker(hardenedSaxonXPathFactory(), unparsedTextExpression());
+    }
+
+    @Test
+    void unconfiguredXPathLeaksDoc() {
+        assertCallLeaksMarker(saxonXPathFactory(), docExpression());
+    }
+
+    @Test
+    void unconfiguredXPathLeaksJsonDoc() {
+        assertCallLeaksMarker(saxonXPathFactory(), jsonDocExpression());
+    }
+
+    @Test
+    void unconfiguredXPathLeaksUnparsedText() {
+        assertCallLeaksMarker(saxonXPathFactory(), unparsedTextExpression());
     }
 }

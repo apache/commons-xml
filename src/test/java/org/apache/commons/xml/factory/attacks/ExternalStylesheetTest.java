@@ -17,7 +17,6 @@
 package org.apache.commons.xml.factory.attacks;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -33,7 +32,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Checks whether stylesheets can access external resources.
  *
- * <p>Each fixture under {@code src/test/resources/ExternalStylesheetTest/} references a sibling file that, if hardening fails to block, would emit the
+ * <p>Each fixture under {@code src/test/resources/leaked/} references a sibling file that, if hardening fails to block, would emit the
  * {@link #MARKER} string into the transform output. The assertion is deterministic: hardening either throws, or the call returns and the marker does not
  * appear in the output.</p>
  *
@@ -51,24 +50,8 @@ class ExternalStylesheetTest {
 
     private static final String MARKER = "All your base are belong to us";
 
-    @Test
-    void transformerStylesheetBlocksInclude() {
-        assertStylesheetExcludesMarker("with-include.xsl");
-    }
-
-    @Test
-    void transformerStylesheetBlocksImport() {
-        assertStylesheetExcludesMarker("with-import.xsl");
-    }
-
-    @Test
-    void transformerBlocksDocument() {
-        assertStylesheetExcludesMarker("with-document.xsl");
-    }
-
     private static void assertStylesheetExcludesMarker(final String resource) {
-        final URL url = ExternalStylesheetTest.class.getResource("/ExternalStylesheetTest/" + resource);
-        assertNotNull(url, "test resource not found: " + resource);
+        final URL url = AttackTestSupport.resourceUrl(resource);
         final String output;
         try {
             final StreamSource src = new StreamSource(url.openStream(), url.toString());
@@ -81,5 +64,20 @@ class ExternalStylesheetTest {
         }
         assertFalse(output.contains(MARKER),
                 "Hardening did not block the external reference; output contained marker '" + MARKER + "'.\nFull output:\n" + output);
+    }
+
+    @Test
+    void transformerBlocksDocument() {
+        assertStylesheetExcludesMarker("with-document.xsl");
+    }
+
+    @Test
+    void transformerStylesheetBlocksImport() {
+        assertStylesheetExcludesMarker("with-import.xsl");
+    }
+
+    @Test
+    void transformerStylesheetBlocksInclude() {
+        assertStylesheetExcludesMarker("with-include.xsl");
     }
 }

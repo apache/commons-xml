@@ -17,7 +17,7 @@ name: CodeQL
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request: { }
   schedule:
     - cron: '33 9 * * 4'   # Randomize this expression

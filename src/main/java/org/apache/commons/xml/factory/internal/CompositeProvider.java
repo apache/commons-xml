@@ -29,6 +29,7 @@ import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.xml.factory.spi.XmlProvider;
+import org.xml.sax.XMLReader;
 
 /**
  * Internal {@link XmlProvider} that routes each {@code configure} call to the bundled or {@link ServiceLoader}-discovered provider responsible for the concrete
@@ -97,6 +98,11 @@ public final class CompositeProvider implements XmlProvider {
     @Override
     public SAXParserFactory configure(final SAXParserFactory factory) {
         return providerFor(factory.getClass()).configure(factory);
+    }
+
+    @Override
+    public XMLReader configure(final XMLReader reader) {
+        return providerFor(reader.getClass()).configure(reader);
     }
 
     @Override

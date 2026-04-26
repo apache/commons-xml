@@ -49,15 +49,15 @@ class ExternalGeneralEntityTest {
     }
 
     private static String xmlPayload() {
-        return withDoctype("root", Payloads.xmlBody(INSERTION));
+        return withDoctype("root", AttackTestSupport.xmlBody(INSERTION));
     }
 
     private static String xsdPayload() {
-        return withDoctype("xs:schema", Payloads.xsdBody(INSERTION));
+        return withDoctype("xs:schema", AttackTestSupport.xsdBody(INSERTION));
     }
 
     private static String xsltPayload() {
-        return withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION));
+        return withDoctype("xsl:stylesheet", AttackTestSupport.xsltBody(INSERTION));
     }
 
     @Test
@@ -75,7 +75,7 @@ class ExternalGeneralEntityTest {
     @Test
     @Tag("schema")
     void hardenedSchemaBlocks() {
-        AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
+        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
@@ -86,8 +86,8 @@ class ExternalGeneralEntityTest {
 
     @Test
     @Tag("trax")
-    void hardenedStylesheetBlocks() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
+    void hardenedTemplatesBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
@@ -100,6 +100,12 @@ class ExternalGeneralEntityTest {
     @Tag("schema")
     void hardenedValidatorBlocks() {
         AttackTestSupport.assertValidatorBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("sax")
+    void hardenedXmlReaderBlocks() {
+        AttackTestSupport.assertXmlReaderBlocks(xmlPayload());
     }
 
     @Test
@@ -117,7 +123,7 @@ class ExternalGeneralEntityTest {
     @Test
     @Tag("schema")
     void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
+        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
@@ -128,8 +134,8 @@ class ExternalGeneralEntityTest {
 
     @Test
     @Tag("trax")
-    void unconfiguredStylesheetCompiles() {
-        AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
+    void unconfiguredTemplatesCompiles() {
+        AttackTestSupport.assertTemplatesCompiles(xsltPayload());
     }
 
     @Test

@@ -25,7 +25,15 @@ import org.apache.commons.xml.factory.spi.XmlProvider;
  *
  * <p>Woodstox is a StAX-only library, so this provider implements only {@link #configure(XMLInputFactory)}.</p>
  *
- * <p>Hardening uses the JAXP-spec StAX properties.</p>
+ * <p>Hardening recipe used below:</p>
+ * <ul>
+ *     <li><strong>{@link Limits#applyToWoodstox}</strong>: defense-in-depth. Woodstox already enforces its own caps (see {@code ReaderConfig.DEFAULT_*}), but
+ *         they are looser than the JDK 25 secure values; this call aligns them so a Woodstox-backed factory enforces the same processing limits as the JDK
+ *         parsers.</li>
+ *     <li><strong>{@link DenyAllResolver#XML}</strong>: required. Woodstox honours {@code IS_SUPPORTING_EXTERNAL_ENTITIES=true} and {@code SUPPORT_DTD=true} by
+ *         default and resolves external entities/DTDs through whatever {@code XMLResolver} the factory carries; without an explicit deny-all resolver, those
+ *         lookups would proceed.</li>
+ * </ul>
  *
  * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
@@ -40,8 +48,10 @@ public final class WoodstoxProvider extends AbstractXmlProvider {
 
     @Override
     public XMLInputFactory configure(final XMLInputFactory factory) {
-        setProperty(factory, XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
-        setProperty(factory, XMLInputFactory.IS_VALIDATING, Boolean.FALSE);
+        // Defense-in-depth: align Woodstox's built-in caps with the JDK 25 secure values; Woodstox's own defaults are functional but looser.
+        Limits.applyToWoodstox(factory);
+        // Required: Woodstox resolves external entities and DTDs by default; an explicit deny-all resolver is the only way to block the lookups.
+        factory.setXMLResolver(DenyAllResolver.XML);
         return factory;
     }
 }

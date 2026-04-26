@@ -47,33 +47,33 @@ class ExternalDtdTest {
     }
 
     private static String xmlPayload() {
-        return withDoctype("root", Payloads.xmlBody(INSERTION));
+        return withDoctype("root", AttackTestSupport.xmlBody(INSERTION));
     }
 
     private static String xsdPayload() {
-        return withDoctype("xs:schema", Payloads.xsdBody(INSERTION));
+        return withDoctype("xs:schema", AttackTestSupport.xsdBody(INSERTION));
     }
 
     private static String xsltPayload() {
-        return withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION));
+        return withDoctype("xsl:stylesheet", AttackTestSupport.xsltBody(INSERTION));
     }
 
     @Test
     @Tag("dom")
-    void hardenedDomBlocks() {
-        AttackTestSupport.assertDomBlocks(xmlPayload());
+    void hardenedDomDoesNotLeak() {
+        AttackTestSupport.assertDomDoesNotLeak(xmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void hardenedSaxBlocks() {
-        AttackTestSupport.assertSaxBlocks(xmlPayload());
+    void hardenedSaxDoesNotLeak() {
+        AttackTestSupport.assertSaxDoesNotLeak(xmlPayload());
     }
 
     @Test
     @Tag("schema")
     void hardenedSchemaBlocks() {
-        AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
+        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
@@ -84,8 +84,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("trax")
-    void hardenedStylesheetBlocks() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
+    void hardenedTemplatesBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
@@ -98,6 +98,12 @@ class ExternalDtdTest {
     @Tag("schema")
     void hardenedValidatorBlocks() {
         AttackTestSupport.assertValidatorBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("sax")
+    void hardenedXmlReaderDoesNotLeak() {
+        AttackTestSupport.assertXmlReaderDoesNotLeak(xmlPayload());
     }
 
     @Test
@@ -115,7 +121,7 @@ class ExternalDtdTest {
     @Test
     @Tag("schema")
     void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
+        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
@@ -126,8 +132,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("trax")
-    void unconfiguredStylesheetCompiles() {
-        AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
+    void unconfiguredTemplatesCompiles() {
+        AttackTestSupport.assertTemplatesCompiles(xsltPayload());
     }
 
     @Test

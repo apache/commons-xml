@@ -92,7 +92,7 @@ class XmlFactoriesTest {
         final XMLInputFactory a = XmlFactories.newXMLInputFactory();
         final XMLInputFactory b = XmlFactories.newXMLInputFactory();
         assertNotSame(a, b);
-        assertEquals(Boolean.FALSE, a.getProperty(XMLInputFactory.SUPPORT_DTD));
+        assertEquals(Boolean.TRUE, a.getProperty(XMLInputFactory.SUPPORT_DTD));
         assertEquals(Boolean.FALSE, a.getProperty(XMLInputFactory.IS_VALIDATING));
     }
 

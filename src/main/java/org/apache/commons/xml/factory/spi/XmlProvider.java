@@ -23,6 +23,8 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
+import org.xml.sax.XMLReader;
+
 /**
  * Service-provider interface implemented by a single JAXP implementation's hardening logic.
  *
@@ -86,6 +88,18 @@ public interface XmlProvider {
      * @return the hardened factory; may be {@code factory} itself or a wrapper that enforces hardening on products it returns.
      */
     default SAXParserFactory configure(final SAXParserFactory factory) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Hardens an {@link XMLReader}.
+     *
+     * <p>The default implementation throws {@link UnsupportedOperationException}.</p>
+     *
+     * @param reader the vanilla reader to harden; never {@code null}.
+     * @return the hardened reader (typically the same instance, configured in place).
+     */
+    default XMLReader configure(final XMLReader reader) {
         throw new UnsupportedOperationException();
     }
 

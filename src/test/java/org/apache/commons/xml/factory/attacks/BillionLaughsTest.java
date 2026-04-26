@@ -22,14 +22,15 @@ import org.junit.jupiter.api.Test;
 /**
  * Checks whether parsers reject a Billion Laughs payload (nested entity expansion in the internal DTD subset).
  *
- * <p>The payload nests four levels of 16/15x expansion ({@code lol1} through {@code lol4}), so resolving {@code &lol4;} produces
- * {@code 15 * 16 * 16 * 16 = 61440} leaf {@code &lol;} expansions and a total of {@code 1 + 15 + 240 + 3840 + 61440 = 65536} entity-expansion events. That is
- * just over the JDK's default {@code jdk.xml.entityExpansionLimit = 64000}, so a parser with the limit enforced rejects the payload, and a parser with the
- * limit disabled materialises only ~60 KB of {@code "A"} text and finishes immediately.</p>
+ * <p>The payload nests three levels of 16x expansion ({@code lol1} through {@code lol3}), so resolving {@code &lol3;} produces
+ * {@code 16 * 16 * 16 = 4096} leaf {@code &lol;} expansions and a total of {@code 1 + 16 + 256 + 4096 = 4369} entity-expansion events. That is comfortably over
+ * the {@code entityExpansionLimit = 2500} this library pins on every JAXP factory it returns (mirroring JDK 25's secure value), so the hardened side trips on
+ * every JDK from 8 to 25. The unconfigured side disables the limit explicitly via {@code setAttribute/setProperty} on the JDK property name, so it parses the
+ * ~4 KB of expanded {@code "A"} text and finishes immediately.</p>
  *
- * <p>Why a single character {@code "A"} and only 15x at the outer level: XSLTC compiles a stylesheet's expanded text into a JVM string constant, which is
- * capped at 65535 bytes. A larger expansion makes {@code newTransformer(stylesheet)} fail with a misleading "GregorSamsa" stub-class error even when entity
- * limits are disabled, so the payload is sized to stay just under that ceiling.</p>
+ * <p>Why a single character {@code "A"}: XSLTC compiles a stylesheet's expanded text into a JVM string constant, which is capped at 65535 bytes. A larger
+ * expansion makes {@code newTransformer(stylesheet)} fail with a misleading "GregorSamsa" stub-class error even when entity limits are disabled, so the payload
+ * is sized to stay well under that ceiling.</p>
  *
  * <p>Each parser type is exercised twice as a pair (unconfigured factory, expected to parse; hardened factory, expected to throw):</p>
  *
@@ -43,7 +44,7 @@ import org.junit.jupiter.api.Test;
  */
 class BillionLaughsTest {
 
-    private static final String INSERTION = "&lol4;";
+    private static final String INSERTION = "&lol3;";
 
     private static String withDoctype(final String rootQName, final String body) {
         return "<?xml version=\"1.0\"?>\n"
@@ -52,104 +53,109 @@ class BillionLaughsTest {
                 + "  <!ENTITY lol1 \"&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;\">\n"
                 + "  <!ENTITY lol2 \"&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;\">\n"
                 + "  <!ENTITY lol3 \"&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;\">\n"
-                + "  <!ENTITY lol4 \"&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;\">\n"
                 + "]>\n"
                 + body + "\n";
     }
 
     private static String xmlPayload() {
-        return withDoctype("root", Payloads.xmlBody(INSERTION));
+        return withDoctype("root", AttackTestSupport.xmlBody(INSERTION));
     }
 
     private static String xsdPayload() {
-        return withDoctype("xs:schema", Payloads.xsdBody(INSERTION));
+        return withDoctype("xs:schema", AttackTestSupport.xsdBody(INSERTION));
     }
 
     private static String xsltPayload() {
-        return withDoctype("xsl:stylesheet", Payloads.xsltBody(INSERTION));
+        return withDoctype("xsl:stylesheet", AttackTestSupport.xsltBody(INSERTION));
     }
 
     @Test
     @Tag("dom")
-    void hardenedDomBlocksBillionLaughs() {
+    void hardenedDomBlocks() {
         AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void hardenedSaxBlocksBillionLaughs() {
+    void hardenedSaxBlocks() {
         AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void hardenedSchemaBlocksBillionLaughs() {
-        AttackTestSupport.assertSchemaCompilationBlocks(xsdPayload());
+    void hardenedSchemaBlocks() {
+        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
     @Tag("stax")
-    void hardenedStaxBlocksBillionLaughs() {
+    void hardenedStaxBlocks() {
         AttackTestSupport.assertStaxBlocks(xmlPayload());
     }
 
     @Test
     @Tag("trax")
-    void hardenedStylesheetBlocksBillionLaughs() {
-        AttackTestSupport.assertStylesheetCompilationBlocks(xsltPayload());
+    void hardenedTemplatesDoesNotLeak() {
+        AttackTestSupport.assertTemplatesDoesNotLeak(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
     @Tag("trax")
-    void hardenedTransformerBlocksBillionLaughs() {
-        AttackTestSupport.assertTransformerBlocks(xmlPayload());
+    void hardenedTransformerDoesNotLeak() {
+        AttackTestSupport.assertTransformerDoesNotLeak(xmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void hardenedValidatorBlocksBillionLaughs() {
+    void hardenedValidatorBlocks() {
         AttackTestSupport.assertValidatorBlocks(xmlPayload());
     }
 
     @Test
+    @Tag("sax")
+    void hardenedXmlReaderBlocks() {
+        AttackTestSupport.assertXmlReaderBlocks(xmlPayload());
+    }
+
+    @Test
     @Tag("dom")
-    void unconfiguredDomResolvesBillionLaughs() {
+    void unconfiguredDomResolves() {
         AttackTestSupport.assertDomResolves(xmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void unconfiguredSaxResolvesBillionLaughs() {
+    void unconfiguredSaxResolves() {
         AttackTestSupport.assertSaxResolves(xmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void unconfiguredSchemaCompilesBillionLaughs() {
-        AttackTestSupport.assertSchemaCompilationSucceeds(xsdPayload());
+    void unconfiguredSchemaCompiles() {
+        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
     @Tag("stax")
-    void unconfiguredStaxResolvesBillionLaughs() {
+    void unconfiguredStaxResolves() {
         AttackTestSupport.assertStaxResolves(xmlPayload());
     }
 
     @Test
     @Tag("trax")
-    void unconfiguredStylesheetCompilesBillionLaughs() {
-        AttackTestSupport.assertStylesheetCompilationSucceeds(xsltPayload());
+    void unconfiguredTemplatesCompiles() {
+        AttackTestSupport.assertTemplatesCompiles(xsltPayload());
     }
 
     @Test
     @Tag("trax")
-    void unconfiguredTransformerSucceedsBillionLaughs() {
+    void unconfiguredTransformerSucceeds() {
         AttackTestSupport.assertTransformerSucceeds(xmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void unconfiguredValidatorAcceptsBillionLaughs() {
+    void unconfiguredValidatorAccepts() {
         AttackTestSupport.assertValidatorAccepts(xmlPayload());
     }
 }

@@ -22,140 +22,102 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLInputFactory;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 import javax.xml.validation.ValidatorHandler;
 import javax.xml.xpath.XPathFactory;
-import javax.xml.xpath.XPathFactoryConfigurationException;
 
 import org.apache.commons.xml.factory.spi.XmlProvider;
-import org.xml.sax.SAXNotRecognizedException;
-import org.xml.sax.SAXNotSupportedException;
+import org.xml.sax.XMLReader;
 
 /**
  * Common scaffolding for {@link XmlProvider} implementations bundled with this library.
  *
  * <p>Subclasses pass the fully qualified class names of the factory implementations they handle to {@link #AbstractXmlProvider(String...)}. The inherited
  * {@link #supports(Class)} then returns {@code true} for exactly those classes, matching on {@link Class#getName()}.</p>
- *
- * <p>The class also exposes the JAXP {@code setFeature}/{@code setAttribute}/{@code setProperty} helpers every provider uses. Each helper wraps the checked
- * exception documented by the corresponding JAXP setter in a {@link HardeningException} whose message names the feature, property or attribute that failed.
- * Every other throwable (including {@link LinkageError} and {@link AbstractMethodError}, which typically signal a JAXP implementation on the classpath older
- * than the one this library was compiled against) is left to propagate so the caller sees the underlying problem.</p>
  */
 abstract class AbstractXmlProvider implements XmlProvider {
 
-    private static HardeningException fail(final Object factory, final String kind, final String name, final Throwable cause) {
-        return new HardeningException("Failed to set " + kind + " '" + name + "' on " + factory.getClass().getName(), cause);
+    /** Action that may throw any exception; used to share a single try/catch around every JAXP setter. */
+    @FunctionalInterface
+    private interface ThrowingAction {
+        void run() throws Exception;
+    }
+
+    private static void apply(final Object factory, final String kind, final String name, final ThrowingAction action) {
+        try {
+            action.run();
+        } catch (final Exception e) {
+            throw new HardeningException("Failed to set " + kind + " '" + name + "' on " + factory.getClass().getName(), e);
+        }
     }
 
     static void setAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        try {
-            factory.setAttribute(attribute, value);
-        } catch (final IllegalArgumentException e) {
-            throw fail(factory, "attribute", attribute, e);
-        }
+        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
     }
 
     static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
-        try {
-            factory.setAttribute(attribute, value);
-        } catch (final IllegalArgumentException e) {
-            throw fail(factory, "attribute", attribute, e);
-        }
+        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
     }
 
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
-        try {
-            factory.setFeature(feature, value);
-        } catch (final ParserConfigurationException e) {
-            throw fail(factory, "feature", feature, e);
-        }
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final SAXParserFactory factory, final String feature, final boolean value) {
-        try {
-            factory.setFeature(feature, value);
-        } catch (final ParserConfigurationException | SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(factory, "feature", feature, e);
-        }
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final TransformerFactory factory, final String feature, final boolean value) {
-        try {
-            factory.setFeature(feature, value);
-        } catch (final TransformerConfigurationException e) {
-            throw fail(factory, "feature", feature, e);
-        }
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final XPathFactory factory, final String feature, final boolean value) {
-        try {
-            factory.setFeature(feature, value);
-        } catch (final XPathFactoryConfigurationException e) {
-            throw fail(factory, "feature", feature, e);
-        }
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final SchemaFactory factory, final String feature, final boolean value) {
-        try {
-            factory.setFeature(feature, value);
-        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(factory, "feature", feature, e);
-        }
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final Validator validator, final String feature, final boolean value) {
-        try {
-            validator.setFeature(feature, value);
-        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(validator, "feature", feature, e);
-        }
+        apply(validator, "feature", feature, () -> validator.setFeature(feature, value));
     }
 
     static void setFeature(final ValidatorHandler handler, final String feature, final boolean value) {
-        try {
-            handler.setFeature(feature, value);
-        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(handler, "feature", feature, e);
-        }
+        apply(handler, "feature", feature, () -> handler.setFeature(feature, value));
     }
 
     static void setProperty(final XMLInputFactory factory, final String property, final Object value) {
-        try {
-            factory.setProperty(property, value);
-        } catch (final IllegalArgumentException e) {
-            throw fail(factory, "property", property, e);
-        }
+        apply(factory, "property", property, () -> factory.setProperty(property, value));
+    }
+
+    static void setProperty(final SAXParser parser, final String property, final Object value) {
+        apply(parser, "property", property, () -> parser.setProperty(property, value));
+    }
+
+    static void setProperty(final XMLReader reader, final String property, final Object value) {
+        apply(reader, "property", property, () -> reader.setProperty(property, value));
+    }
+
+    static void setFeature(final XMLReader reader, final String feature, final boolean value) {
+        apply(reader, "feature", feature, () -> reader.setFeature(feature, value));
     }
 
     static void setProperty(final SchemaFactory factory, final String property, final Object value) {
-        try {
-            factory.setProperty(property, value);
-        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(factory, "property", property, e);
-        }
+        apply(factory, "property", property, () -> factory.setProperty(property, value));
     }
 
     static void setProperty(final Validator validator, final String property, final Object value) {
-        try {
-            validator.setProperty(property, value);
-        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(validator, "property", property, e);
-        }
+        apply(validator, "property", property, () -> validator.setProperty(property, value));
     }
 
     static void setProperty(final ValidatorHandler handler, final String property, final Object value) {
-        try {
-            handler.setProperty(property, value);
-        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-            throw fail(handler, "property", property, e);
-        }
+        apply(handler, "property", property, () -> handler.setProperty(property, value));
     }
 
     private final Set<String> supported;

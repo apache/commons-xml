@@ -26,6 +26,7 @@ import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.xml.factory.internal.CompositeProvider;
 import org.apache.commons.xml.factory.spi.XmlProvider;
+import org.xml.sax.XMLReader;
 
 /**
  * Entry point for obtaining hardened JAXP factories.
@@ -33,21 +34,31 @@ import org.apache.commons.xml.factory.spi.XmlProvider;
  * <p>Every method on this class returns a <em>fresh, hardened</em> factory instance. No caching or pooling is performed; callers on a hot path are responsible
  * for their own caching.</p>
  *
- * <p>Hardening blocks the secondary external-resource fetches an implementation would otherwise initiate while processing document content:</p>
+ * <h2>Hardening guarantees</h2>
+ *
+ * <p>Every factory returned by this class makes the same three guarantees, regardless of which JAXP implementation is on the classpath:</p>
  *
  * <ul>
- *   <li>DOCTYPE declarations and external DTDs,</li>
- *   <li>external general and parameter entities,</li>
- *   <li>{@code xsi:schemaLocation} and {@code xsi:noNamespaceSchemaLocation} hints,</li>
- *   <li>XInclude (where applicable),</li>
- *   <li>{@code xsl:import}, {@code xsl:include} and {@code document()} in XSLT,</li>
- *   <li>{@code doc()}, {@code collection()} and {@code unparsed-text()} in XPath 3.1+,</li>
- *   <li>{@code xs:import}, {@code xs:include} and {@code xs:redefine} in XML Schema.</li>
+ *   <li><strong>External DTDs are not fetched.</strong></li>
+ *   <li><strong>External entities are not resolved.</strong></li>
+ *   <li><strong>Internal entity expansion is bounded</strong> by the JDK's default limit, so DoS payloads such as Billion Laughs are rejected before they
+ *       exhaust resources.</li>
  * </ul>
+ *
+ * <p>The guarantees hold whether or not the caller opts into DTD validation
+ * ({@link javax.xml.parsers.DocumentBuilderFactory#setValidating(boolean) setValidating(true)}) or attaches a compiled XSD via
+ * {@link javax.xml.parsers.DocumentBuilderFactory#setSchema(javax.xml.validation.Schema) setSchema}: every external resource the validation would otherwise
+ * fetch (the DTD itself, an {@code xsi:schemaLocation} hint, an external entity referenced from the DTD) remains blocked.</p>
+ *
+ * <p>Each method on this class adds factory-specific guarantees on top of the three above, documented on the corresponding {@code newXxxFactory()} method.</p>
+ *
+ * <h2>Caller-supplied URIs</h2>
  *
  * <p>A top-level URI passed directly by the caller is fetched as-is: {@code StreamSource(systemId)}, {@code DocumentBuilder.parse(String)}, or a
  * {@code SAXSource} built from a system id all cause the JAXP implementation to open that URI without consulting the hardening layer. Use a
  * {@link javax.xml.transform.URIResolver} or {@link org.xml.sax.EntityResolver} if you need to restrict the top-level fetch.</p>
+ *
+ * <h2>Thread safety</h2>
  *
  * <p>The returned factories inherit the thread-safety properties of the underlying JAXP implementation, which in practice means they are <strong>not
  * guaranteed to be thread-safe</strong>. Create a new factory per thread or synchronise externally.</p>
@@ -57,17 +68,23 @@ import org.apache.commons.xml.factory.spi.XmlProvider;
 public final class XmlFactories {
 
     /**
+     * Hardens an existing {@link XMLReader}.
+     *
+     * @param reader the reader to harden; never {@code null}.
+     * @return a hardened reader.
+     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the reader's concrete class, or if the recognised provider cannot apply the
+     *         hardening settings to it.
+     */
+    public static XMLReader harden(final XMLReader reader) {
+        return CompositeProvider.getInstance().configure(reader);
+    }
+
+    /**
      * Returns a fresh, hardened {@link DocumentBuilderFactory}.
      *
-     * <table>
-     *   <caption>Hardening applied</caption>
-     *   <tr><th>Setting</th><th>State</th></tr>
-     *   <tr><td>DOCTYPE</td><td>forbidden</td></tr>
-     *   <tr><td>XInclude</td><td>disabled</td></tr>
-     *   <tr><td>DTD validation</td><td>disabled</td></tr>
-     * </table>
-     *
-     * <p>Together these block <strong>every</strong> external reference the parser would follow while reading a document through this factory.</p>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is disabled. Calling
+     * {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on the returned factory does not re-enable resolution; a parse that
+     * encounters an {@code xi:include} element fails.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying JAXP implementation, or if the recognised provider cannot
@@ -80,15 +97,9 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link SAXParserFactory}.
      *
-     * <table>
-     *   <caption>Hardening applied</caption>
-     *   <tr><th>Setting</th><th>State</th></tr>
-     *   <tr><td>DOCTYPE</td><td>forbidden</td></tr>
-     *   <tr><td>XInclude</td><td>disabled</td></tr>
-     *   <tr><td>DTD validation</td><td>disabled</td></tr>
-     * </table>
-     *
-     * <p>Together these block <strong>every</strong> external reference the parser would follow while reading a document through this factory.</p>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is disabled. Calling
+     * {@link SAXParserFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on the returned factory does not re-enable resolution; a parse that encounters
+     * an {@code xi:include} element fails.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying JAXP implementation, or if the recognised provider cannot
@@ -101,25 +112,15 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link SchemaFactory} configured for W3C XML Schema ({@link XMLConstants#W3C_XML_SCHEMA_NS_URI}).
      *
-     * <table>
-     *   <caption>Hardening applied</caption>
-     *   <tr><th>Setting</th><th>State</th></tr>
-     *   <tr><td>{@link XMLConstants#FEATURE_SECURE_PROCESSING}</td><td>enabled</td></tr>
-     *   <tr><td>{@link XMLConstants#ACCESS_EXTERNAL_DTD}</td><td>blocked (set to {@code ""})</td></tr>
-     *   <tr><td>{@link XMLConstants#ACCESS_EXTERNAL_SCHEMA}</td><td>blocked (set to {@code ""})</td></tr>
-     * </table>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}:</p>
      *
-     * <p>Together these block <strong>every</strong> external reference ({@code xs:import}, {@code xs:include}, {@code xs:redefine}, external DTDs) declared
-     * inside the schema that the factory compiles.</p>
+     * <ul>
+     *   <li>{@code xs:import}, {@code xs:include} and {@code xs:redefine} schemaLocation URIs are not resolved during schema compilation, and</li>
+     *   <li>{@code xsi:schemaLocation} / {@code xsi:noNamespaceSchemaLocation} hints in instance documents are not resolved during validation.</li>
+     * </ul>
      *
-     * <p><strong>Limitation.</strong> The schema passed to {@link SchemaFactory#newSchema(javax.xml.transform.Source)} is read by a parser the
-     * implementation selects internally, which is not guaranteed to honour DOCTYPE-level hardening. Treat schemas as trusted, or pre-parse the schema through
-     * a hardened {@link #newDocumentBuilderFactory()}/{@link #newSAXParserFactory()} and pass a {@link javax.xml.transform.dom.DOMSource} or
-     * {@link javax.xml.transform.sax.SAXSource}.</p>
-     *
-     * <p></p>Validators created from the returned {@link javax.xml.validation.Schema} inherit the hardening for secondary fetches, but the XML input given to
-     * {@link javax.xml.validation.Validator#validate(javax.xml.transform.Source) Validator.validate(Source)} is subject to the same top-level-URI caveat as
-     * above.</p>
+     * <p></p>The same guarantees apply to {@link javax.xml.validation.Validator} and {@link javax.xml.validation.ValidatorHandler} instances produced from the
+     * resulting {@link javax.xml.validation.Schema}.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying Schema implementation, or if the recognised provider cannot
@@ -132,22 +133,11 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link TransformerFactory}.
      *
-     * <table>
-     *   <caption>Hardening applied</caption>
-     *   <tr><th>Setting</th><th>State</th></tr>
-     *   <tr><td>{@link XMLConstants#FEATURE_SECURE_PROCESSING}</td><td>enabled</td></tr>
-     *   <tr><td>{@link XMLConstants#ACCESS_EXTERNAL_DTD}</td><td>blocked (set to {@code ""})</td></tr>
-     *   <tr><td>{@link XMLConstants#ACCESS_EXTERNAL_STYLESHEET}</td><td>blocked (set to {@code ""})</td></tr>
-     * </table>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}: {@code xsl:import}, {@code xsl:include} and {@code document()} URIs are not
+     * resolved.</p>
      *
-     * <p>Together these block <strong>every</strong> external reference ({@code xsl:import}, {@code xsl:include}, {@code document()}, external DTDs) declared
-     * in the stylesheet that the factory compiles.</p>
-     *
-     * <p><strong>Limitation.</strong> The stylesheet passed to {@link TransformerFactory#newTransformer(javax.xml.transform.Source)} and the XML input passed
-     * to {@code Transformer.transform(Source, Result)} are read by a parser the JAXP implementation selects internally, which is not guaranteed to honour
-     * DOCTYPE-level hardening. Treat stylesheets as trusted, or pre-parse the stylesheet and input through a hardened
-     * {@link #newDocumentBuilderFactory()}/{@link #newSAXParserFactory()} and pass them as {@link javax.xml.transform.dom.DOMSource} or
-     * {@link javax.xml.transform.sax.SAXSource}.</p>
+     * <p>The guarantees apply to every parser the factory creates internally, both for stylesheet compilation and for source-document reading at
+     * {@code Transformer.transform(Source, Result)} time.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying TrAX implementation, or if the recognised provider cannot
@@ -160,20 +150,7 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link XMLInputFactory}.
      *
-     * <table>
-     *   <caption>Hardening applied</caption>
-     *   <tr><th>Setting</th><th>State</th></tr>
-     *   <tr><td>DOCTYPE</td><td>processing disabled</td></tr>
-     *   <tr><td>XInclude</td><td>N/A</td></tr>
-     *   <tr><td>DTD validation</td><td>disabled</td></tr>
-     * </table>
-     *
-     * <p>StAX has no XInclude, so nothing further is needed. Together these block <strong>every</strong> external reference the parser would follow while
-     * reading a document through this factory.</p>
-     *
-     * <p></p>Unlike DOM and SAX, a DOCTYPE is tolerated rather than rejected: the declaration is read, but the DTD body is never processed, so entity
-     * references declared in the DTD fail at the reference site. The settings map to {@link XMLInputFactory#SUPPORT_DTD} and
-     * {@link XMLInputFactory#IS_VALIDATING}.</p>
+     * <p>The three universal guarantees on {@link XmlFactories} apply; StAX exposes no additional vectors beyond them.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying StAX implementation, or if the recognised provider cannot
@@ -186,14 +163,8 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link XPathFactory} for the default XPath object model.
      *
-     * <table>
-     *   <caption>Hardening applied</caption>
-     *   <tr><th>Setting</th><th>State</th></tr>
-     *   <tr><td>{@link XMLConstants#FEATURE_SECURE_PROCESSING}</td><td>enabled</td></tr>
-     * </table>
-     *
-     * <p>This blocks external-URI access from XPath 3.1+ functions such as {@code doc()}, {@code collection()} and {@code unparsed-text()} where the
-     * underlying implementation honours the flag.</p>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}, URI-fetching XPath 3.1+ functions ({@code doc()}, {@code collection()},
+     * {@code unparsed-text()}) are not resolved.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying XPath implementation, or if the recognised provider cannot

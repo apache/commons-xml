@@ -16,9 +16,6 @@
  */
 package org.apache.commons.xml.factory.internal;
 
-import javax.xml.XMLConstants;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.xpath.XPathFactory;
@@ -26,12 +23,8 @@ import javax.xml.xpath.XPathFactory;
 import net.sf.saxon.Configuration;
 import net.sf.saxon.jaxp.SaxonTransformerFactory;
 import net.sf.saxon.lib.Feature;
-import net.sf.saxon.lib.ParseOptions;
-import net.sf.saxon.trans.XPathException;
 import net.sf.saxon.xpath.XPathFactoryImpl;
-import org.apache.commons.xml.factory.XmlFactories;
 import org.apache.commons.xml.factory.spi.XmlProvider;
-import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 
 /**
@@ -49,8 +42,9 @@ public final class SaxonProvider extends AbstractXmlProvider {
      * <p>Three layers of restriction are applied:</p>
      *
      * <ol>
-     *   <li><b>SAX layer.</b> Stylesheet and source-document reading is routed to {@link #makeParser} via the {@link #HARDENED} sentinel, which returns an
-     *   {@link XMLReader} from a hardened {@link SAXParserFactory}. DOCTYPE, external entities and XInclude are refused at parse time.</li>
+     *   <li><b>SAX layer.</b> {@link #makeParser} hands every {@link XMLReader} Saxon would otherwise use through
+     *   {@link CompositeProvider#configure(XMLReader)}, which routes it to the matching bundled {@link XmlProvider}. DOCTYPE, external entities and XInclude
+     *   are refused at parse time.</li>
      *   <li><b>URI-resolution layer.</b> {@link Feature#ALLOWED_PROTOCOLS} is set to the empty string. This blocks XSLT inclusions {@code xsl:include},
      *   {@code xsl:import}, {@code xsl:source-document}, and the XPath/XSLT functions {@code fn:doc}, {@code fn:document}, {@code fn:unparsed-text},
      *   {@code fn:collection}, {@code fn:json-doc} and {@code fn:transform}.</li>
@@ -58,16 +52,9 @@ public final class SaxonProvider extends AbstractXmlProvider {
      *       sidestep the URI restrictions.</li>
      * </ol>
      */
-    private static class HardenedConfiguration extends  Configuration {
-        private static final String HARDENED = "hardened";
-        private final SAXParserFactory factory;
+    private static class HardenedConfiguration extends Configuration {
 
-        private HardenedConfiguration(final SAXParserFactory factory) {
-            this.factory = factory;
-            // SAX layer: register the HARDENED sentinel for both stylesheet reading and source-document reading. Saxon will call makeParser(HARDENED) below
-            // and receive an XMLReader from the supplied hardened SAXParserFactory.
-            setStyleParserClass(HARDENED);
-            setSourceParserClass(HARDENED);
+        private HardenedConfiguration() {
             // Extension-function layer: turn off Saxon's reflection-based extension calls. Without this an attacker could bypass URI restrictions through
             // user-supplied Java extensions.
             setBooleanProperty(Feature.ALLOW_EXTERNAL_FUNCTIONS, false);
@@ -77,37 +64,27 @@ public final class SaxonProvider extends AbstractXmlProvider {
         }
 
         /**
-         * Saxon's hook for instantiating a SAX parser by class name.
-         *
-         * <p>We use the {@value HARDENED} sentinel value to return a hardened parser instead.</p>
+         * Saxon's hook for instantiating a new SAX parser.
          */
         @Override
-        public XMLReader makeParser(String className) throws TransformerFactoryConfigurationError {
-            if (HARDENED.equals(className)) {
-                try {
-                    return factory.newSAXParser().getXMLReader();
-                } catch (ParserConfigurationException | SAXException e) {
-                    throw new TransformerFactoryConfigurationError(e);
-                }
+        public XMLReader makeParser(final String className) throws TransformerFactoryConfigurationError {
+            try {
+                return CompositeProvider.getInstance().configure(super.makeParser(className));
+            } catch (final HardeningException e) {
+                throw new TransformerFactoryConfigurationError(e);
             }
-            return super.makeParser(className);
         }
     }
 
     private static class SaxonProviderConfigurer {
 
-        private static Configuration newHardenedConfiguration() {
-            final SAXParserFactory parserFactory = XmlFactories.newSAXParserFactory();
-            return new HardenedConfiguration(parserFactory);
-        }
-
         private static TransformerFactory configure(final TransformerFactory factory) {
-            ((SaxonTransformerFactory) factory).setConfiguration(newHardenedConfiguration());
+            ((SaxonTransformerFactory) factory).setConfiguration(new HardenedConfiguration());
             return factory;
         }
 
         private static XPathFactory configure(final XPathFactory factory) {
-            ((XPathFactoryImpl) factory).setConfiguration(newHardenedConfiguration());
+            ((XPathFactoryImpl) factory).setConfiguration(new HardenedConfiguration());
             return factory;
         }
     }

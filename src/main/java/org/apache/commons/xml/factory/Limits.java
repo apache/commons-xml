@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.internal;
+package org.apache.commons.xml.factory;
 
-import static org.apache.commons.xml.factory.internal.AbstractXmlProvider.setAttribute;
-import static org.apache.commons.xml.factory.internal.AbstractXmlProvider.setProperty;
+import static org.apache.commons.xml.factory.AbstractXmlProvider.setAttribute;
+import static org.apache.commons.xml.factory.AbstractXmlProvider.setProperty;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

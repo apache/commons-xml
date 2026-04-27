@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.internal;
+package org.apache.commons.xml.factory;
 
 /**
  * Thrown when a factory cannot be hardened.
  *
  * <p>Two failure modes share this type:</p>
  * <ul>
- *   <li>No registered {@link org.apache.commons.xml.factory.spi.XmlProvider XmlProvider} recognises the concrete factory class.</li>
+ *   <li>No registered {@link XmlProvider XmlProvider} recognises the concrete factory class.</li>
  *   <li>A recognised provider tried to apply a hardening setting and the implementation rejected it.</li>
  * </ul>
  *

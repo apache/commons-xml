@@ -14,20 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.attacks;
+package org.apache.commons.xml.factory;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks whether the XSLT {@code document()} function is resolved at transform time. Compilation succeeds (the function call is just XPath); the leak vector
- * fires only when {@code Transformer.transform} is called and the function evaluates its URI argument.
+ * Checks whether {@code xsl:include} of a sibling stylesheet is resolved at compile time. The wrapper includes a sibling that, if fetched, contributes a
+ * template emitting the leaked marker into the transform output.
  */
 @Tag("trax")
-class TransformerDocumentTest {
+class TemplatesIncludeTest {
 
     @Test
-    void hardenedTransformerBlocks() {
-        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.resourceSource("with-document.xsl"));
+    void hardenedTemplatesBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.resourceSource("with-include.xsl"));
     }
 }

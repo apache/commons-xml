@@ -14,11 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.internal;
+package org.apache.commons.xml.factory;
 
 import javax.xml.stream.XMLInputFactory;
-
-import org.apache.commons.xml.factory.spi.XmlProvider;
 
 /**
  * {@link XmlProvider} for the FasterXML Woodstox StAX implementation ({@code com.ctc.wstx:woodstox-core}).
@@ -37,7 +35,7 @@ import org.apache.commons.xml.factory.spi.XmlProvider;
  *
  * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
-public final class WoodstoxProvider extends AbstractXmlProvider {
+final class WoodstoxProvider extends AbstractXmlProvider {
 
     /**
      * Default constructor; invoked by {@link java.util.ServiceLoader} and the registry.

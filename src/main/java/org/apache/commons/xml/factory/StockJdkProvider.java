@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.internal;
+package org.apache.commons.xml.factory;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -24,7 +24,6 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.xml.factory.spi.XmlProvider;
 import org.xml.sax.XMLReader;
 
 /**
@@ -50,7 +49,7 @@ import org.xml.sax.XMLReader;
  *
  * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
-public final class StockJdkProvider extends AbstractXmlProvider {
+final class StockJdkProvider extends AbstractXmlProvider {
 
     /**
      * {@code jdk.xml.overrideDefaultParser}: pin to the JDK's bundled SAX parser; defense-in-depth against a sysprop swap to a third-party parser.

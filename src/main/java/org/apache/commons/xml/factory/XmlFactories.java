@@ -24,8 +24,6 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.xml.factory.internal.CompositeProvider;
-import org.apache.commons.xml.factory.spi.XmlProvider;
 import org.xml.sax.XMLReader;
 
 /**

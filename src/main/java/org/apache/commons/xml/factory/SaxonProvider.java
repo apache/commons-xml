@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.internal;
+package org.apache.commons.xml.factory;
 
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
@@ -24,7 +24,6 @@ import net.sf.saxon.Configuration;
 import net.sf.saxon.jaxp.SaxonTransformerFactory;
 import net.sf.saxon.lib.Feature;
 import net.sf.saxon.xpath.XPathFactoryImpl;
-import org.apache.commons.xml.factory.spi.XmlProvider;
 import org.xml.sax.XMLReader;
 
 /**
@@ -34,7 +33,7 @@ import org.xml.sax.XMLReader;
  *
  * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
-public final class SaxonProvider extends AbstractXmlProvider {
+final class SaxonProvider extends AbstractXmlProvider {
 
     /**
      * A Saxon {@link Configuration} that locks down every channel through which Saxon would otherwise reach external resources.

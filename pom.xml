@@ -170,26 +170,6 @@
         </executions>
       </plugin>
 
-      <plugin>
-        <groupId>org.moditect</groupId>
-        <artifactId>moditect-maven-plugin</artifactId>
-        <version>${commons.moditect-maven-plugin.version}</version>
-        <executions>
-          <execution>
-            <id>add-module-infos</id>
-            <configuration>
-              <module>
-                <moduleInfo>
-                  <exports>
-                    !*.internal;
-                    *;
-                  </exports>
-                </moduleInfo>
-              </module>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
   </build>
 </project>

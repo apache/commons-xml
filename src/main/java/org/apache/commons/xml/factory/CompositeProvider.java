@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.internal;
+package org.apache.commons.xml.factory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,7 +28,6 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.xml.factory.spi.XmlProvider;
 import org.xml.sax.XMLReader;
 
 /**
@@ -53,7 +52,7 @@ import org.xml.sax.XMLReader;
  * {@code configure}, never to advertise support. The interface implementation lets {@link org.apache.commons.xml.factory.XmlFactories} treat hardening
  * uniformly without an extra abstraction.</p>
  */
-public final class CompositeProvider implements XmlProvider {
+final class CompositeProvider implements XmlProvider {
 
     private static final CompositeProvider INSTANCE = new CompositeProvider(defaultProviders());
 
@@ -143,7 +142,6 @@ public final class CompositeProvider implements XmlProvider {
         all.add(new XercesProvider());
         all.add(new WoodstoxProvider());
         all.add(new SaxonProvider());
-        ServiceLoader.load(XmlProvider.class, CompositeProvider.class.getClassLoader()).forEach(all::add);
         return all;
     }
 }

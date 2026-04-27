@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.spi;
+package org.apache.commons.xml.factory;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
@@ -55,7 +55,7 @@ import org.xml.sax.XMLReader;
  * <p>The default {@code configure} implementations throw {@link UnsupportedOperationException}. A provider should override only the methods corresponding to
  * factory types it actually supports.</p>
  */
-public interface XmlProvider {
+interface XmlProvider {
 
     /**
      * Indicates whether this provider can harden a factory of the given concrete class.

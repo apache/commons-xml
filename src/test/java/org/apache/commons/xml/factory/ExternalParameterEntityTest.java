@@ -14,35 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.attacks;
+package org.apache.commons.xml.factory;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks whether parsers can pull in an external DTD declared via {@code <!DOCTYPE root SYSTEM "...">}.
+ * Checks whether parsers can pull in an external DTD via a parameter-entity reference inside the internal subset.
  *
- * <p>The wrapper points at {@code src/test/resources/leaked/referenced.dtd}, which declares a {@code leaked} entity. Each wrapper body references
- * {@code &leaked;}, so the parse cannot succeed unless the DTD is actually fetched: a hardened parser refuses the fetch and {@code &leaked;} is undefined,
- * which throws; an unconfigured parser fetches the DTD, the entity resolves, and the parse succeeds.</p>
+ * <p>The wrapper declares a parameter entity {@code %xxe;} pointing at {@code src/test/resources/leaked/referenced.dtd} and immediately references it in the
+ * internal subset; once expanded, the entity declarations from {@code referenced.dtd} (in particular {@code <!ENTITY leaked "...">}) become part of the
+ * document's DTD. Each wrapper body then references {@code &leaked;}, so the parse cannot succeed unless the parameter-entity expansion is allowed: a hardened
+ * parser refuses, {@code &leaked;} is undefined, and the parse throws; an unconfigured parser fetches and resolves, and the parse succeeds.</p>
  *
  * <p>Each parser type is exercised twice as a pair (unconfigured factory, expected to parse; hardened factory, expected to throw):</p>
  *
  * <ul>
  *   <li>DOM, SAX and StAX direct XML parsing.</li>
- *   <li>{@code SchemaFactory.newSchema(Source)} compilation of an XSD whose source has the DOCTYPE.</li>
- *   <li>{@link javax.xml.validation.Validator#validate(javax.xml.transform.Source)} of an instance whose source has the DOCTYPE.</li>
+ *   <li>{@code SchemaFactory.newSchema(Source)} compilation of an XSD whose source has the parameter-entity DOCTYPE.</li>
+ *   <li>{@link javax.xml.validation.Validator#validate(javax.xml.transform.Source)} of an instance whose source has the parameter-entity DOCTYPE.</li>
  *   <li>Identity {@code Transformer} reading the input XML.</li>
- *   <li>{@code TransformerFactory.newTransformer(Source)} compilation of a stylesheet whose source has the DOCTYPE.</li>
+ *   <li>{@code TransformerFactory.newTransformer(Source)} compilation of a stylesheet whose source has the parameter-entity DOCTYPE.</li>
  * </ul>
  */
-class ExternalDtdTest {
+class ExternalParameterEntityTest {
 
     private static final String INSERTION = "&leaked;";
 
     private static String withDoctype(final String rootQName, final String body) {
         return "<?xml version=\"1.0\"?>\n"
-                + "<!DOCTYPE " + rootQName + " SYSTEM \"" + AttackTestSupport.resourceUrl("referenced.dtd") + "\">\n"
+                + "<!DOCTYPE " + rootQName + " [\n"
+                + "  <!ENTITY % xxe SYSTEM \"" + AttackTestSupport.resourceUrl("referenced.dtd") + "\">\n"
+                + "  %xxe;\n"
+                + "]>\n"
                 + body + "\n";
     }
 
@@ -60,14 +64,14 @@ class ExternalDtdTest {
 
     @Test
     @Tag("dom")
-    void hardenedDomDoesNotLeak() {
-        AttackTestSupport.assertDomDoesNotLeak(xmlPayload());
+    void hardenedDomBlocks() {
+        AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void hardenedSaxDoesNotLeak() {
-        AttackTestSupport.assertSaxDoesNotLeak(xmlPayload());
+    void hardenedSaxBlocks() {
+        AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
     @Test
@@ -102,8 +106,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("sax")
-    void hardenedXmlReaderDoesNotLeak() {
-        AttackTestSupport.assertXmlReaderDoesNotLeak(xmlPayload());
+    void hardenedXmlReaderBlocks() {
+        AttackTestSupport.assertXmlReaderBlocks(xmlPayload());
     }
 
     @Test

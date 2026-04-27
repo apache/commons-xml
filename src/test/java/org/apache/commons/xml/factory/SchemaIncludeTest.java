@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.attacks;
+package org.apache.commons.xml.factory;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

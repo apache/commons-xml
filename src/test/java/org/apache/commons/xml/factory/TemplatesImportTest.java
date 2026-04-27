@@ -14,27 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.attacks;
+package org.apache.commons.xml.factory;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks whether {@code xs:import namespace="..." schemaLocation="included.xsd"} of a sibling schema in a different target namespace is resolved at compile
- * time. The wrapper references an element defined only in the imported schema, so compilation cannot succeed unless the schemaLocation is fetched.
+ * Checks whether {@code xsl:import} of a sibling stylesheet is resolved at compile time. The wrapper imports a sibling that, if fetched, contributes a
+ * template emitting the leaked marker into the transform output.
  */
-@Tag("schema")
-class SchemaImportTest {
-
-    private static final String RESOURCE = "with-import.xsd";
+@Tag("trax")
+class TemplatesImportTest {
 
     @Test
-    void hardenedSchemaBlocks() {
-        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.resourceSource(RESOURCE));
-    }
-
-    @Test
-    void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.resourceSource(RESOURCE));
+    void hardenedTemplatesBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.resourceSource("with-import.xsl"));
     }
 }

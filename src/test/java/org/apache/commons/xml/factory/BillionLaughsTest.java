@@ -14,38 +14,45 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.commons.xml.factory.attacks;
+package org.apache.commons.xml.factory;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks whether parsers can pull in an external DTD via a parameter-entity reference inside the internal subset.
+ * Checks whether parsers reject a Billion Laughs payload (nested entity expansion in the internal DTD subset).
  *
- * <p>The wrapper declares a parameter entity {@code %xxe;} pointing at {@code src/test/resources/leaked/referenced.dtd} and immediately references it in the
- * internal subset; once expanded, the entity declarations from {@code referenced.dtd} (in particular {@code <!ENTITY leaked "...">}) become part of the
- * document's DTD. Each wrapper body then references {@code &leaked;}, so the parse cannot succeed unless the parameter-entity expansion is allowed: a hardened
- * parser refuses, {@code &leaked;} is undefined, and the parse throws; an unconfigured parser fetches and resolves, and the parse succeeds.</p>
+ * <p>The payload nests three levels of 16x expansion ({@code lol1} through {@code lol3}), so resolving {@code &lol3;} produces
+ * {@code 16 * 16 * 16 = 4096} leaf {@code &lol;} expansions and a total of {@code 1 + 16 + 256 + 4096 = 4369} entity-expansion events. That is comfortably over
+ * the {@code entityExpansionLimit = 2500} this library pins on every JAXP factory it returns (mirroring JDK 25's secure value), so the hardened side trips on
+ * every JDK from 8 to 25. The unconfigured side disables the limit explicitly via {@code setAttribute/setProperty} on the JDK property name, so it parses the
+ * ~4 KB of expanded {@code "A"} text and finishes immediately.</p>
+ *
+ * <p>Why a single character {@code "A"}: XSLTC compiles a stylesheet's expanded text into a JVM string constant, which is capped at 65535 bytes. A larger
+ * expansion makes {@code newTransformer(stylesheet)} fail with a misleading "GregorSamsa" stub-class error even when entity limits are disabled, so the payload
+ * is sized to stay well under that ceiling.</p>
  *
  * <p>Each parser type is exercised twice as a pair (unconfigured factory, expected to parse; hardened factory, expected to throw):</p>
  *
  * <ul>
- *   <li>DOM, SAX and StAX direct XML parsing.</li>
- *   <li>{@code SchemaFactory.newSchema(Source)} compilation of an XSD whose source has the parameter-entity DOCTYPE.</li>
- *   <li>{@link javax.xml.validation.Validator#validate(javax.xml.transform.Source)} of an instance whose source has the parameter-entity DOCTYPE.</li>
- *   <li>Identity {@code Transformer} reading the input XML.</li>
- *   <li>{@code TransformerFactory.newTransformer(Source)} compilation of a stylesheet whose source has the parameter-entity DOCTYPE.</li>
+ *   <li>The {@code hardened*} side runs the payload through {@link org.apache.commons.xml.factory.XmlFactories} and asserts the parse throws. Hardening blocks
+ *       at whichever layer fires first (DOCTYPE-disallow on DOM/SAX, FSP plus propagated entity-expansion limits elsewhere).</li>
+ *   <li>The {@code unconfigured*} side runs the payload through a default factory with {@code FEATURE_SECURE_PROCESSING=false} and asserts the parse succeeds.
+ *       Disabling FSP turns off the JDK's entity-expansion limit, which is the only safety net stopping a default factory from materialising the expansion.
+ *       The {@code unconfigured*} name is slightly euphemistic here: the factory is actively configured to be permissive, not "left alone".</li>
  * </ul>
  */
-class ExternalParameterEntityTest {
+class BillionLaughsTest {
 
-    private static final String INSERTION = "&leaked;";
+    private static final String INSERTION = "&lol3;";
 
     private static String withDoctype(final String rootQName, final String body) {
         return "<?xml version=\"1.0\"?>\n"
                 + "<!DOCTYPE " + rootQName + " [\n"
-                + "  <!ENTITY % xxe SYSTEM \"" + AttackTestSupport.resourceUrl("referenced.dtd") + "\">\n"
-                + "  %xxe;\n"
+                + "  <!ENTITY lol \"A\">\n"
+                + "  <!ENTITY lol1 \"&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;\">\n"
+                + "  <!ENTITY lol2 \"&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;\">\n"
+                + "  <!ENTITY lol3 \"&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;\">\n"
                 + "]>\n"
                 + body + "\n";
     }
@@ -88,14 +95,14 @@ class ExternalParameterEntityTest {
 
     @Test
     @Tag("trax")
-    void hardenedTemplatesBlocks() {
-        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.streamSource(xsltPayload()));
+    void hardenedTemplatesDoesNotLeak() {
+        AttackTestSupport.assertTemplatesDoesNotLeak(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
     @Tag("trax")
-    void hardenedTransformerBlocks() {
-        AttackTestSupport.assertTransformerBlocks(xmlPayload());
+    void hardenedTransformerDoesNotLeak() {
+        AttackTestSupport.assertTransformerDoesNotLeak(xmlPayload());
     }
 
     @Test

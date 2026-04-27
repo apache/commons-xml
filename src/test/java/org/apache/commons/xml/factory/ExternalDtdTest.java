@@ -90,8 +90,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("trax")
-    void hardenedTransformerBlocks() {
-        AttackTestSupport.assertTransformerBlocks(xmlPayload());
+    void hardenedTransformerDoesNotLeak() {
+        AttackTestSupport.assertTransformerDoesNotLeak(xmlPayload());
     }
 
     @Test

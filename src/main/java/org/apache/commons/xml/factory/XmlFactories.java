@@ -102,6 +102,9 @@ public final class XmlFactories {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl":
                 return StockJdkProvider.configure(factory);
+            case "org.apache.xalan.processor.TransformerFactoryImpl":
+            case "org.apache.xalan.xsltc.trax.TransformerFactoryImpl":
+                return XalanProvider.configure(factory);
             case "net.sf.saxon.TransformerFactoryImpl":
             case "com.saxonica.config.ProfessionalTransformerFactory":
             case "com.saxonica.config.EnterpriseTransformerFactory":
@@ -115,6 +118,8 @@ public final class XmlFactories {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl":
                 return StockJdkProvider.configure(factory);
+            case "org.apache.xpath.jaxp.XPathFactoryImpl":
+                return XalanProvider.configure(factory);
             case "net.sf.saxon.xpath.XPathFactoryImpl":
                 return SaxonProvider.configure(factory);
             default:

@@ -54,9 +54,10 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <!-- Optional JAXP implementations used by bundled providers. -->
-    <commons.xerces.version>2.12.2</commons.xerces.version>
-    <commons.woodstox.version>7.1.1</commons.woodstox.version>
     <commons.saxon.version>12.9</commons.saxon.version>
+    <commons.woodstox.version>7.1.1</commons.woodstox.version>
+    <commons.xalan.version>2.7.3</commons.xalan.version>
+    <commons.xerces.version>2.12.2</commons.xerces.version>
   </properties>
 
   <dependencies>
@@ -78,12 +79,16 @@
     <plugins>
 
       <!--
-        Run the test suite four times, each with exactly one JAXP implementation on the classpath:
+        Run the test suite seven times, each with a distinct JAXP combination:
 
-          - test-stockjdk: stock JDK factories only
-          - test-xerces:   stock JDK + external Apache Xerces
-          - test-woodstox: stock JDK + Woodstox (StAX)
-          - test-saxon:    stock JDK + Saxon-HE (TrAX, XPath)
+          - test-saxon:         Saxon-HE (TrAX, XPath) over stock JDK SAX
+          - test-saxon-xerces:  Saxon-HE (TrAX, XPath) over stock JDK SAX or Apache Xerces SAX
+                                (Saxon prefers the JDK SAX provider but may resolve to Xerces)
+          - test-stockjdk:      stock JDK factories only (every group except xpath3)
+          - test-woodstox:      Woodstox (StAX)
+          - test-xalan:         Apache Xalan (TrAX, XPath) over stock JDK SAX
+          - test-xalan-xerces:  Apache Xalan (TrAX, XPath) over Apache Xerces SAX
+          - test-xerces:        Apache Xerces (DOM, SAX, Schema)
       -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -109,24 +114,21 @@
             <phase>none</phase>
           </execution>
           <execution>
-            <id>test-stockjdk</id>
+            <id>test-saxon</id>
             <goals><goal>test</goal></goals>
             <configuration>
-              <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
-              <!-- Run every tagged and untagged test except xpath3, which needs Saxon on the classpath. -->
-              <excludedGroups>xpath3</excludedGroups>
-              <classpathDependencyExcludes>
-                <exclude>net.sf.saxon:Saxon-HE</exclude>
-              </classpathDependencyExcludes>
+              <reportsDirectory>${project.build.directory}/surefire-reports/saxon</reportsDirectory>
+              <!-- Saxon contributes TrAX (transformer + stylesheet) and XPath; xpath3 covers Saxon-only XPath 3.1 functions. -->
+              <groups>trax,xpath3</groups>
             </configuration>
           </execution>
           <execution>
-            <id>test-xerces</id>
+            <id>test-saxon-xerces</id>
             <goals><goal>test</goal></goals>
             <configuration>
-              <reportsDirectory>${project.build.directory}/surefire-reports/xerces</reportsDirectory>
-              <!-- Xerces only contributes DOM/SAX/Schema; the rest is JDK-bundled and already covered by test-stockjdk. -->
-              <groups>dom,sax,schema</groups>
+              <reportsDirectory>${project.build.directory}/surefire-reports/saxon-xerces</reportsDirectory>
+              <!-- Same groups as test-saxon, but with Apache Xerces also visible to Saxon's SAX-provider lookup. -->
+              <groups>trax,xpath3</groups>
               <additionalClasspathDependencies>
                 <dependency>
                   <groupId>xerces</groupId>
@@ -134,6 +136,15 @@
                   <version>${commons.xerces.version}</version>
                 </dependency>
               </additionalClasspathDependencies>
+            </configuration>
+          </execution>
+          <execution>
+            <id>test-stockjdk</id>
+            <goals><goal>test</goal></goals>
+            <configuration>
+              <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
+              <!-- Run every tagged and untagged test except xpath3, which needs Saxon on the classpath. -->
+              <excludedGroups>xpath3</excludedGroups>
               <classpathDependencyExcludes>
                 <exclude>net.sf.saxon:Saxon-HE</exclude>
               </classpathDependencyExcludes>
@@ -159,12 +170,75 @@
             </configuration>
           </execution>
           <execution>
-            <id>test-saxon</id>
+            <id>test-xalan</id>
             <goals><goal>test</goal></goals>
             <configuration>
-              <reportsDirectory>${project.build.directory}/surefire-reports/saxon</reportsDirectory>
-              <!-- Saxon contributes TrAX (transformer + stylesheet) and XPath; xpath3 covers Saxon-only XPath 3.1 functions. -->
-              <groups>trax,xpath3</groups>
+              <reportsDirectory>${project.build.directory}/surefire-reports/xalan</reportsDirectory>
+              <!-- Xalan contributes TrAX and XPath. -->
+              <groups>xpath,trax</groups>
+              <additionalClasspathDependencies>
+                <dependency>
+                  <groupId>xalan</groupId>
+                  <artifactId>serializer</artifactId>
+                  <version>${commons.xalan.version}</version>
+                </dependency>
+                <dependency>
+                  <groupId>xalan</groupId>
+                  <artifactId>xalan</artifactId>
+                  <version>${commons.xalan.version}</version>
+                </dependency>
+              </additionalClasspathDependencies>
+              <classpathDependencyExcludes>
+                <exclude>net.sf.saxon:Saxon-HE</exclude>
+              </classpathDependencyExcludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>test-xalan-xerces</id>
+            <goals><goal>test</goal></goals>
+            <configuration>
+              <reportsDirectory>${project.build.directory}/surefire-reports/xalan-xerces</reportsDirectory>
+              <!-- Same groups as test-xalan, but with Apache Xerces winning Xalan's internal SAX-provider lookup. -->
+              <groups>xpath,trax</groups>
+              <additionalClasspathDependencies>
+                <dependency>
+                  <groupId>xalan</groupId>
+                  <artifactId>serializer</artifactId>
+                  <version>${commons.xalan.version}</version>
+                </dependency>
+                <dependency>
+                  <groupId>xalan</groupId>
+                  <artifactId>xalan</artifactId>
+                  <version>${commons.xalan.version}</version>
+                </dependency>
+                <dependency>
+                  <groupId>xerces</groupId>
+                  <artifactId>xercesImpl</artifactId>
+                  <version>${commons.xerces.version}</version>
+                </dependency>
+              </additionalClasspathDependencies>
+              <classpathDependencyExcludes>
+                <exclude>net.sf.saxon:Saxon-HE</exclude>
+              </classpathDependencyExcludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>test-xerces</id>
+            <goals><goal>test</goal></goals>
+            <configuration>
+              <reportsDirectory>${project.build.directory}/surefire-reports/xerces</reportsDirectory>
+              <!-- Xerces only contributes DOM/SAX/Schema; the rest is JDK-bundled and already covered by test-stockjdk. -->
+              <groups>dom,sax,schema</groups>
+              <additionalClasspathDependencies>
+                <dependency>
+                  <groupId>xerces</groupId>
+                  <artifactId>xercesImpl</artifactId>
+                  <version>${commons.xerces.version}</version>
+                </dependency>
+              </additionalClasspathDependencies>
+              <classpathDependencyExcludes>
+                <exclude>net.sf.saxon:Saxon-HE</exclude>
+              </classpathDependencyExcludes>
             </configuration>
           </execution>
         </executions>

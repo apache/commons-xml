@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URL;
+import java.util.Arrays;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -33,10 +34,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.stream.StreamResult;
@@ -44,8 +47,11 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
@@ -71,26 +77,10 @@ import org.xml.sax.helpers.DefaultHandler;
  * resource form preserves the system id so relative {@code xs:include} / {@code xs:import} / {@code xs:redefine} / {@code xsl:include} / {@code xsl:import}
  * URIs resolve normally.</p>
  *
- * <p>The two generic primitives {@link #assertParseFails(ThrowingAction, String)} and {@link #assertParseSucceeds(ThrowingAction, String)} are exposed for
- * tests that need to compose a non-standard factory call.</p>
+ * <p>The two generic primitives {@link #assertParseFails} and {@link #assertParseSucceeds} are exposed for tests that need to compose a non-standard factory
+ * call.</p>
  */
 final class AttackTestSupport {
-
-    /**
-     * Action that may throw any exception; lets test bodies forward checked JAXP exceptions.
-     */
-    @FunctionalInterface
-    interface ThrowingAction {
-        void run() throws Exception;
-    }
-
-    /**
-     * Action that may throw any exception and returns the captured output text used for the leaked-marker check.
-     */
-    @FunctionalInterface
-    interface ThrowingStringSupplier {
-        String get() throws Exception;
-    }
 
     /**
      * Trivial W3C XML Schema that validates {@link #xmlBody(String)} output.
@@ -126,7 +116,7 @@ final class AttackTestSupport {
      * <p>{@link DocumentBuilder#parse(InputSource)} via {@link XmlFactories#newDocumentBuilderFactory()}; only a thrown exception passes.</p>
      */
     static void assertDomBlocks(final String payload) {
-        assertParseFails(() -> XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload)), "DOM");
+        assertParseFails(() -> XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload)), "DOM", SAXException.class);
     }
 
     /**
@@ -139,7 +129,7 @@ final class AttackTestSupport {
         assertNoLeak(() -> {
             final Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload));
             return doc.getDocumentElement() == null ? "" : doc.getDocumentElement().getTextContent();
-        }, "DOM");
+        }, "DOM", SAXException.class);
     }
 
     /**
@@ -169,29 +159,53 @@ final class AttackTestSupport {
     /**
      * Skeleton for every {@code assert*DoesNotLeak} helper.
      *
-     * <p>Treats any thrown exception as "hardening blocked at parse" (acceptable); otherwise asserts the captured output omits {@link #LEAKED_MARKER}.</p>
+     * <p>Treats a thrown exception of one of the {@code expected} types as "hardening blocked at parse" (acceptable); otherwise asserts the captured output
+     * omits {@link #LEAKED_MARKER}. A throw whose type does not match {@code expected} fails the test, so unrelated failures (e.g. a {@link HardeningException}
+     * because no recipe matched the JAXP implementation) cannot be silently accepted as a clean block.</p>
+     *
+     * @param action      the parse to execute, returning the captured output text checked for {@link #LEAKED_MARKER}.
+     * @param description short label naming the JAXP surface under test.
+     * @param expected    the exception types any of which the hardening layer may surface as a clean rejection.
      */
-    private static void assertNoLeak(final ThrowingStringSupplier action, final String description) {
+    @SafeVarargs
+    private static void assertNoLeak(final ThrowingSupplier<String> action, final String description, final Class<? extends Throwable>... expected) {
         final String output;
         try {
             output = action.get();
-        } catch (final Exception e) {
-            return; // hardening blocked at parse; acceptable outcome.
+        } catch (final Throwable thrown) {
+            if (Arrays.stream(expected).anyMatch(c -> c.isInstance(thrown))) {
+                return; // hardening blocked at parse; acceptable outcome.
+            }
+            throw new AssertionError(blockedDescription(description) + " (got " + thrown.getClass().getName() + ")", thrown);
         }
         assertFalse(output.contains(LEAKED_MARKER),
                 "Hardening did not block " + description + "; output contained marker '" + LEAKED_MARKER + "'.\nFull output:\n" + output);
     }
 
     /**
-     * Asserts the supplied action throws.
-     *
-     * <p>Generic primitive underlying every {@code assert*Blocks(...)} helper; exposed for tests that compose a non-standard hardened-side call.</p>
+     * Asserts the supplied parsing action throws an exception of the {@code expected} type.
      *
      * @param action      the parse to execute.
-     * @param description short label included in the failure message.
+     * @param description short label naming the JAXP surface under test.
+     * @param expected    the exception type the hardening layer is expected to surface.
      */
-    static void assertParseFails(final ThrowingAction action, final String description) {
-        assertThrows(Exception.class, action::run, "Hardening did not block " + description + "; parse completed successfully.");
+    static void assertParseFails(final Executable action, final String description, final Class<? extends Throwable> expected) {
+        assertThrows(expected, action, blockedDescription(description));
+    }
+
+    /**
+     * Asserts the supplied parsing action throws an exception that matches one of the {@code expected} types.
+     *
+     * @param action      the parse to execute.
+     * @param description short label naming the JAXP surface under test.
+     * @param expected    the exception types any of which the hardening layer may surface.
+     */
+    @SafeVarargs
+    static void assertParseFails(final Executable action, final String description, final Class<? extends Throwable>... expected) {
+        final Throwable thrown = assertThrows(Exception.class, action, blockedDescription(description));
+        if (Arrays.stream(expected).noneMatch(c -> c.isInstance(thrown))) {
+            throw new AssertionError(blockedDescription(description) + " (got " + thrown.getClass().getName() + ")", thrown);
+        }
     }
 
     /**
@@ -203,8 +217,8 @@ final class AttackTestSupport {
      * @param action      the parse to execute.
      * @param description short label included in the failure message.
      */
-    static void assertParseSucceeds(final ThrowingAction action, final String description) {
-        assertDoesNotThrow(action::run, "Unconfigured factory should parse " + description + "; the wrapper or its external reference is broken.");
+    static void assertParseSucceeds(final Executable action, final String description) {
+        assertDoesNotThrow(action, "Unconfigured factory should parse " + description + "; the wrapper or its external reference is broken.");
     }
 
     /**
@@ -213,7 +227,7 @@ final class AttackTestSupport {
      * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; only a thrown exception passes.</p>
      */
     static void assertSaxBlocks(final String payload) {
-        assertParseFails(() -> parseQuietly(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX");
+        assertParseFails(() -> parseQuietly(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX", SAXException.class);
     }
 
     /**
@@ -223,7 +237,7 @@ final class AttackTestSupport {
      * entities when an external subset is declared but unread.</p>
      */
     static void assertSaxDoesNotLeak(final String payload) {
-        assertNoLeak(() -> captureCharacters(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX");
+        assertNoLeak(() -> captureCharacters(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX", SAXException.class);
     }
 
     /**
@@ -257,7 +271,7 @@ final class AttackTestSupport {
      * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; only a thrown exception passes.</p>
      */
     static void assertSchemaBlocks(final Source xsd) {
-        assertParseFails(() -> XmlFactories.newSchemaFactory().newSchema(xsd), "Schema compile");
+        assertParseFails(() -> XmlFactories.newSchemaFactory().newSchema(xsd), "Schema compile", SAXException.class, SecurityException.class);
     }
 
     /**
@@ -282,8 +296,8 @@ final class AttackTestSupport {
      * throw.</p>
      */
     static void assertStaxBlocks(final String payload) {
-        assertParseFails(() -> consumeStreamReader(XmlFactories.newXMLInputFactory(), payload), "StAX stream");
-        assertParseFails(() -> consumeEventReader(XmlFactories.newXMLInputFactory(), payload), "StAX event");
+        assertParseFails(() -> consumeStreamReader(XmlFactories.newXMLInputFactory(), payload), "StAX stream", XMLStreamException.class);
+        assertParseFails(() -> consumeEventReader(XmlFactories.newXMLInputFactory(), payload), "StAX event", XMLStreamException.class);
     }
 
     /**
@@ -319,8 +333,12 @@ final class AttackTestSupport {
     static void assertTemplatesBlocks(final Source xslt) {
         assertParseFails(() -> {
             final Templates templates = XmlFactories.newTransformerFactory().newTemplates(xslt);
+            // Xalan return `null` if the template fails
+            if (templates == null) {
+                throw new TransformerException("Transformer factory returned null");
+            }
             templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(new StringWriter()));
-        }, "Templates");
+        }, "Templates", TransformerException.class);
     }
 
     /**
@@ -347,9 +365,12 @@ final class AttackTestSupport {
         assertNoLeak(() -> {
             final StringWriter sink = new StringWriter();
             final Templates templates = XmlFactories.newTransformerFactory().newTemplates(xslt);
-            templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(sink));
+            // Xalan return `null` if the template fails
+            if (templates != null) {
+                templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(sink));
+            }
             return sink.toString();
-        }, "Templates");
+        }, "Templates", TransformerException.class);
     }
 
     /**
@@ -361,7 +382,7 @@ final class AttackTestSupport {
     static void assertTransformerBlocks(final String payload) {
         assertParseFails(
                 () -> XmlFactories.newTransformerFactory().newTransformer().transform(streamSource(payload), new StreamResult(new StringWriter())),
-                "Transformer");
+                "Transformer", TransformerException.class);
     }
 
     /**
@@ -375,7 +396,7 @@ final class AttackTestSupport {
             final StringWriter sink = new StringWriter();
             XmlFactories.newTransformerFactory().newTransformer().transform(streamSource(payload), new StreamResult(sink));
             return sink.toString();
-        }, "Transformer");
+        }, "Transformer", TransformerException.class);
     }
 
     /**
@@ -416,7 +437,7 @@ final class AttackTestSupport {
     static void assertValidatorBlocks(final String xml) {
         assertParseFails(
                 () -> XmlFactories.newSchemaFactory().newSchema(streamSource(BENIGN_SCHEMA)).newValidator().validate(streamSource(xml)),
-                "Validator");
+                "Validator", SAXException.class, SecurityException.class);
     }
 
     /**
@@ -425,7 +446,7 @@ final class AttackTestSupport {
      * <p>{@link XMLReader#parse(InputSource)} on a raw reader hardened via {@link XmlFactories#harden(XMLReader)}; only a thrown exception passes.</p>
      */
     static void assertXmlReaderBlocks(final String payload) {
-        assertParseFails(() -> parseQuietly(rawHardenedReader(), payload), "XMLReader");
+        assertParseFails(() -> parseQuietly(rawHardenedReader(), payload), "XMLReader", SAXException.class);
     }
 
     /**
@@ -435,7 +456,7 @@ final class AttackTestSupport {
      * undeclared entities when an external subset is declared but unread.</p>
      */
     static void assertXmlReaderDoesNotLeak(final String payload) {
-        assertNoLeak(() -> captureCharacters(rawHardenedReader(), payload), "XMLReader");
+        assertNoLeak(() -> captureCharacters(rawHardenedReader(), payload), "XMLReader", SAXException.class);
     }
 
     /**
@@ -446,6 +467,16 @@ final class AttackTestSupport {
      */
     static void assertXmlReaderParses(final String payload) {
         assertParseSucceeds(() -> parseQuietly(rawHardenedReader(), payload), "XMLReader");
+    }
+
+    /**
+     * Builds the failure message used by every {@code assert*Blocks(...)} helper.
+     *
+     * @param description short label naming the JAXP surface under test.
+     * @return the assertion-failure message string.
+     */
+    private static String blockedDescription(final String description) {
+        return "Hardening did not block " + description + "; parse completed successfully.";
     }
 
     /** Parses the payload through the supplied reader and returns the accumulated character data, used by the SAX-based {@code DoesNotLeak} helpers. */
@@ -537,10 +568,10 @@ final class AttackTestSupport {
     }
 
     /** Runs the action and silently swallows any thrown exception; used to apply best-effort permissive-side flags that may not be supported. */
-    private static void suppressException(final ThrowingAction action) {
+    private static void suppressException(final Executable action) {
         try {
-            action.run();
-        } catch (final Exception e) {
+            action.execute();
+        } catch (final Throwable e) {
             // Ignore
         }
     }

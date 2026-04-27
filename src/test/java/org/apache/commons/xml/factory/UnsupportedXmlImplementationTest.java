@@ -26,12 +26,12 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies that an unknown factory class surfaces {@link IllegalStateException} with a message naming the class and pointing at the remediation path.
+ * Verifies that an unknown factory class surfaces {@link IllegalStateException} with a message naming the class.
  */
 class UnsupportedXmlImplementationTest {
 
     /**
-     * A stand-in factory class whose fully qualified name is not matched by any bundled provider or {@code ServiceLoader} service on the test classpath.
+     * A stand-in factory class whose fully qualified name is not matched by any bundled hardening recipe.
      */
     public static final class FakeDocumentBuilderFactory extends DocumentBuilderFactory {
 
@@ -62,15 +62,12 @@ class UnsupportedXmlImplementationTest {
     }
 
     @Test
-    void registryRejectsUnknownFactory() {
+    void dispatchRejectsUnknownFactory() {
         final IllegalStateException thrown = assertThrows(
                 IllegalStateException.class,
-                () -> CompositeProvider.getInstance().configure(new FakeDocumentBuilderFactory()));
+                () -> XmlFactories.dispatch(new FakeDocumentBuilderFactory()));
         assertNotNull(thrown.getMessage());
         assertTrue(thrown.getMessage().contains(FakeDocumentBuilderFactory.class.getName()),
                 "Exception message must name the unsupported class: " + thrown.getMessage());
-        assertTrue(thrown.getMessage().contains("ServiceLoader")
-                        || thrown.getMessage().contains("XmlProvider"),
-                "Message should hint at the remediation path: " + thrown.getMessage());
     }
 }

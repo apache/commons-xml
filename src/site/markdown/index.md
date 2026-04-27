@@ -35,10 +35,10 @@ such as standalone Xerces, Woodstox, or Saxon's TrAX, need further configuration
 library author has no control over which implementation is on the classpath at runtime, so the effective security
 posture of their code depends on a deployment decision made elsewhere.
 
-This library provides that baseline. Each `XmlFactories` call returns a fresh factory hardened by a provider-specific
-SPI, so the returned object behaves the same way security-wise regardless of which JAXP implementation resolved.
-Security becomes a property of the call, not of the classpath, and there is one place to update when a new hardening
-setting becomes available or a default changes.
+This library provides that baseline. Each `XmlFactories` call returns a fresh factory hardened by an
+implementation-specific recipe, so the returned object behaves the same way security-wise regardless of which JAXP
+implementation resolved. Security becomes a property of the call, not of the classpath, and there is one place to
+update when a new hardening setting becomes available or a default changes.
 
 ## Usage
 
@@ -59,13 +59,9 @@ stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying im
 ### Supported implementations
 
 Out of the box the library recognises the stock JDK JAXP implementations, Apache Xerces 2.x, Woodstox, and Saxon-HE. If
-a factory resolves to an implementation not covered by any bundled or registered provider, every `XmlFactories` method
-throws `IllegalStateException` with a message naming the unsupported class.
-
-Support for additional implementations can be plugged in by publishing an
-`org.apache.commons.xml.factory.spi.XmlProvider` through the standard Java `ServiceLoader` mechanism. Bundled providers
-always take precedence, so a third-party provider cannot hijack hardening for a factory class this library already
-supports.
+a factory resolves to an implementation not covered by any bundled hardening recipe, every `XmlFactories` method throws
+`IllegalStateException` with a message naming the unsupported class. Adding support for a new JAXP implementation
+requires a code change to this library.
 
 **DOM parsing** via `DocumentBuilderFactory`:
 

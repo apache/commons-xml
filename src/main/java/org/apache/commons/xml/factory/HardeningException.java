@@ -21,8 +21,8 @@ package org.apache.commons.xml.factory;
  *
  * <p>Two failure modes share this type:</p>
  * <ul>
- *   <li>No registered {@link XmlProvider XmlProvider} recognises the concrete factory class.</li>
- *   <li>A recognised provider tried to apply a hardening setting and the implementation rejected it.</li>
+ *   <li>No bundled hardening recipe matches the concrete factory class.</li>
+ *   <li>A recipe tried to apply a hardening setting and the implementation rejected it.</li>
  * </ul>
  *
  * <p>The message names the unsupported factory class or the specific feature, attribute or property that failed; the cause, when present, is the original

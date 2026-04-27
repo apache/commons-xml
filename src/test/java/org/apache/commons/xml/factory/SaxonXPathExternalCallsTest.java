@@ -89,7 +89,7 @@ class SaxonXPathExternalCallsTest {
     }
 
     private static XPathFactory hardenedSaxonXPathFactory() {
-        return CompositeProvider.getInstance().configure(saxonXPathFactory());
+        return SaxonProvider.configure(saxonXPathFactory());
     }
 
     private static String jsonDocExpression() {

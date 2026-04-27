@@ -16,6 +16,10 @@
  */
 package org.apache.commons.xml.factory;
 
+import static org.apache.commons.xml.factory.JaxpSetters.setAttribute;
+import static org.apache.commons.xml.factory.JaxpSetters.setFeature;
+import static org.apache.commons.xml.factory.JaxpSetters.setProperty;
+
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
@@ -27,7 +31,7 @@ import javax.xml.xpath.XPathFactory;
 import org.xml.sax.XMLReader;
 
 /**
- * {@link XmlProvider} for the stock JDK's JAXP implementation.
+ * Hardening recipes for the stock JDK's JAXP implementation.
  *
  * <p>This is the internal fork of Apache Xerces, Xalan and friends shipped inside {@code com.sun.org.apache.*} and {@code com.sun.xml.internal.*} packages.</p>
  *
@@ -46,10 +50,8 @@ import org.xml.sax.XMLReader;
  *
  * <p>SAX hardening lives in {@link #configure(XMLReader)}: {@link SAXParserFactory} has no property API, so the {@link HardeningSAXParserFactory} wrapper
  * funnels each produced parser's {@link XMLReader} through that method.</p>
- *
- * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
-final class StockJdkProvider extends AbstractXmlProvider {
+final class StockJdkProvider {
 
     /**
      * {@code jdk.xml.overrideDefaultParser}: pin to the JDK's bundled SAX parser; defense-in-depth against a sysprop swap to a third-party parser.
@@ -61,21 +63,7 @@ final class StockJdkProvider extends AbstractXmlProvider {
      */
     private static final String XERCES_LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
 
-    /**
-     * Default constructor; invoked by {@link java.util.ServiceLoader} and the registry.
-     */
-    public StockJdkProvider() {
-        super("com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl",
-                "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl",
-                "com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser",
-                "com.sun.xml.internal.stream.XMLInputFactoryImpl",
-                "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl",
-                "com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl",
-                "com.sun.org.apache.xerces.internal.jaxp.validation.XMLSchemaFactory");
-    }
-
-    @Override
-    public DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
+    static DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
         // Required: enables the JDK XMLSecurityManager limits.
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
@@ -88,16 +76,14 @@ final class StockJdkProvider extends AbstractXmlProvider {
         return factory;
     }
 
-    @Override
-    public SAXParserFactory configure(final SAXParserFactory factory) {
+    static SAXParserFactory configure(final SAXParserFactory factory) {
         // Required: enables the JDK XMLSecurityManager limits.
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // The remaining hardening (limits, ACCESS_EXTERNAL_*) lives in the XMLReader configure() because SAXParserFactory has no property API.
-        return new HardeningSAXParserFactory(factory, this);
+        return new HardeningSAXParserFactory(factory, StockJdkProvider::configure);
     }
 
-    @Override
-    public XMLReader configure(final XMLReader reader) {
+    static XMLReader configure(final XMLReader reader) {
         // Required: enables the JDK XMLSecurityManager limits on a raw reader (e.g. one Saxon picked).
         setFeature(reader, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
@@ -110,8 +96,7 @@ final class StockJdkProvider extends AbstractXmlProvider {
         return reader;
     }
 
-    @Override
-    public XMLInputFactory configure(final XMLInputFactory factory) {
+    static XMLInputFactory configure(final XMLInputFactory factory) {
         // Required: XMLInputFactory rejects FSP, so the limits below are the only way to enable JDK XMLSecurityManager caps on the StAX path.
         Limits.applyToJdkStax(factory);
         // Required: XMLInputFactory has no ACCESS_EXTERNAL_* either; an explicit deny-all resolver is the only way to block external entity fetching.
@@ -119,8 +104,7 @@ final class StockJdkProvider extends AbstractXmlProvider {
         return factory;
     }
 
-    @Override
-    public TransformerFactory configure(final TransformerFactory factory) {
+    static TransformerFactory configure(final TransformerFactory factory) {
         // Defense-in-depth: pin to the JDK's bundled SAX parser; see FEATURE_OVERRIDE_DEFAULT_PARSER.
         setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
         // Required: enables the JDK XMLSecurityManager limits used by the internal SAX parser.
@@ -133,8 +117,7 @@ final class StockJdkProvider extends AbstractXmlProvider {
         return factory;
     }
 
-    @Override
-    public XPathFactory configure(final XPathFactory factory) {
+    static XPathFactory configure(final XPathFactory factory) {
         // Defense-in-depth: pin to the JDK's bundled SAX parser; see FEATURE_OVERRIDE_DEFAULT_PARSER.
         setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
         // Required: enables JDK XPath limits; XPathFactory has no property API for finer control.
@@ -142,8 +125,7 @@ final class StockJdkProvider extends AbstractXmlProvider {
         return factory;
     }
 
-    @Override
-    public SchemaFactory configure(final SchemaFactory factory) {
+    static SchemaFactory configure(final SchemaFactory factory) {
         // Defense-in-depth: pin to the JDK's bundled SAX parser; see FEATURE_OVERRIDE_DEFAULT_PARSER.
         setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
         // Required: enables the JDK XMLSecurityManager limits; propagates to Validator and ValidatorHandler.
@@ -154,5 +136,8 @@ final class StockJdkProvider extends AbstractXmlProvider {
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
         return factory;
+    }
+
+    private StockJdkProvider() {
     }
 }

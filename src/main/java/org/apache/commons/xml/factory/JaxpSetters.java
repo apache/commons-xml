@@ -16,11 +16,6 @@
  */
 package org.apache.commons.xml.factory;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -34,12 +29,12 @@ import javax.xml.xpath.XPathFactory;
 import org.xml.sax.XMLReader;
 
 /**
- * Common scaffolding for {@link XmlProvider} implementations bundled with this library.
+ * Setter helpers shared by the bundled hardening providers.
  *
- * <p>Subclasses pass the fully qualified class names of the factory implementations they handle to {@link #AbstractXmlProvider(String...)}. The inherited
- * {@link #supports(Class)} then returns {@code true} for exactly those classes, matching on {@link Class#getName()}.</p>
+ * <p>Each overload wraps a single JAXP setter (feature, attribute or property) in a try/catch that translates any thrown exception into a
+ * {@link HardeningException} whose message names the offending feature, attribute or property and the concrete factory class.</p>
  */
-abstract class AbstractXmlProvider implements XmlProvider {
+final class JaxpSetters {
 
     /** Action that may throw any exception; used to share a single try/catch around every JAXP setter. */
     @FunctionalInterface
@@ -91,6 +86,10 @@ abstract class AbstractXmlProvider implements XmlProvider {
         apply(handler, "feature", feature, () -> handler.setFeature(feature, value));
     }
 
+    static void setFeature(final XMLReader reader, final String feature, final boolean value) {
+        apply(reader, "feature", feature, () -> reader.setFeature(feature, value));
+    }
+
     static void setProperty(final XMLInputFactory factory, final String property, final Object value) {
         apply(factory, "property", property, () -> factory.setProperty(property, value));
     }
@@ -101,10 +100,6 @@ abstract class AbstractXmlProvider implements XmlProvider {
 
     static void setProperty(final XMLReader reader, final String property, final Object value) {
         apply(reader, "property", property, () -> reader.setProperty(property, value));
-    }
-
-    static void setFeature(final XMLReader reader, final String feature, final boolean value) {
-        apply(reader, "feature", feature, () -> reader.setFeature(feature, value));
     }
 
     static void setProperty(final SchemaFactory factory, final String property, final Object value) {
@@ -119,14 +114,6 @@ abstract class AbstractXmlProvider implements XmlProvider {
         apply(handler, "property", property, () -> handler.setProperty(property, value));
     }
 
-    private final Set<String> supported;
-
-    protected AbstractXmlProvider(final String... supportedClassNames) {
-        this.supported = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(supportedClassNames)));
-    }
-
-    @Override
-    public final boolean supports(final Class<?> factoryClass) {
-        return factoryClass != null && supported.contains(factoryClass.getName());
+    private JaxpSetters() {
     }
 }

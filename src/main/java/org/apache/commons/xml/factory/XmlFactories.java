@@ -65,16 +65,91 @@ import org.xml.sax.XMLReader;
  */
 public final class XmlFactories {
 
+    static DocumentBuilderFactory dispatch(final DocumentBuilderFactory factory) {
+        switch (factory.getClass().getName()) {
+            case "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl":
+                return StockJdkProvider.configure(factory);
+            case "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl":
+                return XercesProvider.configure(factory);
+            default:
+                throw noProvider(factory);
+        }
+    }
+
+    private static SAXParserFactory dispatch(final SAXParserFactory factory) {
+        switch (factory.getClass().getName()) {
+            case "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl":
+                return StockJdkProvider.configure(factory);
+            case "org.apache.xerces.jaxp.SAXParserFactoryImpl":
+                return XercesProvider.configure(factory);
+            default:
+                throw noProvider(factory);
+        }
+    }
+
+    private static XMLInputFactory dispatch(final XMLInputFactory factory) {
+        switch (factory.getClass().getName()) {
+            case "com.sun.xml.internal.stream.XMLInputFactoryImpl":
+                return StockJdkProvider.configure(factory);
+            case "com.ctc.wstx.stax.WstxInputFactory":
+                return WoodstoxProvider.configure(factory);
+            default:
+                throw noProvider(factory);
+        }
+    }
+
+    private static TransformerFactory dispatch(final TransformerFactory factory) {
+        switch (factory.getClass().getName()) {
+            case "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl":
+                return StockJdkProvider.configure(factory);
+            case "net.sf.saxon.TransformerFactoryImpl":
+            case "com.saxonica.config.ProfessionalTransformerFactory":
+            case "com.saxonica.config.EnterpriseTransformerFactory":
+                return SaxonProvider.configure(factory);
+            default:
+                throw noProvider(factory);
+        }
+    }
+
+    private static XPathFactory dispatch(final XPathFactory factory) {
+        switch (factory.getClass().getName()) {
+            case "com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl":
+                return StockJdkProvider.configure(factory);
+            case "net.sf.saxon.xpath.XPathFactoryImpl":
+                return SaxonProvider.configure(factory);
+            default:
+                throw noProvider(factory);
+        }
+    }
+
+    private static SchemaFactory dispatch(final SchemaFactory factory) {
+        switch (factory.getClass().getName()) {
+            case "com.sun.org.apache.xerces.internal.jaxp.validation.XMLSchemaFactory":
+                return StockJdkProvider.configure(factory);
+            case "org.apache.xerces.jaxp.validation.XMLSchemaFactory":
+                return XercesProvider.configure(factory);
+            default:
+                throw noProvider(factory);
+        }
+    }
+
     /**
      * Hardens an existing {@link XMLReader}.
      *
      * @param reader the reader to harden; never {@code null}.
      * @return a hardened reader.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the reader's concrete class, or if the recognised provider cannot apply the
-     *         hardening settings to it.
+     * @throws IllegalStateException if the reader's concrete class is not recognised by any bundled hardening recipe, or if the matching recipe cannot apply
+     *         its settings to it.
      */
     public static XMLReader harden(final XMLReader reader) {
-        return CompositeProvider.getInstance().configure(reader);
+        switch (reader.getClass().getName()) {
+            case "com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser":
+                return StockJdkProvider.configure(reader);
+            case "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser":
+                return XercesProvider.configure(reader);
+            default:
+                throw noProvider(reader);
+        }
     }
 
     /**
@@ -85,11 +160,11 @@ public final class XmlFactories {
      * encounters an {@code xi:include} element fails.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying JAXP implementation, or if the recognised provider cannot
-     *         apply the hardening settings to it.
+     * @throws IllegalStateException if the underlying JAXP implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     *         apply its settings to it.
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
-        return CompositeProvider.getInstance().configure(DocumentBuilderFactory.newInstance());
+        return dispatch(DocumentBuilderFactory.newInstance());
     }
 
     /**
@@ -100,11 +175,11 @@ public final class XmlFactories {
      * an {@code xi:include} element fails.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying JAXP implementation, or if the recognised provider cannot
-     *         apply the hardening settings to it.
+     * @throws IllegalStateException if the underlying JAXP implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     *         apply its settings to it.
      */
     public static SAXParserFactory newSAXParserFactory() {
-        return CompositeProvider.getInstance().configure(SAXParserFactory.newInstance());
+        return dispatch(SAXParserFactory.newInstance());
     }
 
     /**
@@ -121,11 +196,11 @@ public final class XmlFactories {
      * resulting {@link javax.xml.validation.Schema}.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying Schema implementation, or if the recognised provider cannot
-     *         apply the hardening settings to it.
+     * @throws IllegalStateException if the underlying Schema implementation is not recognised by any bundled hardening recipe, or if the matching recipe
+     *         cannot apply its settings to it.
      */
     public static SchemaFactory newSchemaFactory() {
-        return CompositeProvider.getInstance().configure(SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI));
+        return dispatch(SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI));
     }
 
     /**
@@ -138,11 +213,11 @@ public final class XmlFactories {
      * {@code Transformer.transform(Source, Result)} time.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying TrAX implementation, or if the recognised provider cannot
-     *         apply the hardening settings to it.
+     * @throws IllegalStateException if the underlying TrAX implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     *         apply its settings to it.
      */
     public static TransformerFactory newTransformerFactory() {
-        return CompositeProvider.getInstance().configure(TransformerFactory.newInstance());
+        return dispatch(TransformerFactory.newInstance());
     }
 
     /**
@@ -151,11 +226,11 @@ public final class XmlFactories {
      * <p>The three universal guarantees on {@link XmlFactories} apply; StAX exposes no additional vectors beyond them.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying StAX implementation, or if the recognised provider cannot
-     *         apply the hardening settings to it.
+     * @throws IllegalStateException if the underlying StAX implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     *         apply its settings to it.
      */
     public static XMLInputFactory newXMLInputFactory() {
-        return CompositeProvider.getInstance().configure(XMLInputFactory.newInstance());
+        return dispatch(XMLInputFactory.newInstance());
     }
 
     /**
@@ -165,11 +240,15 @@ public final class XmlFactories {
      * {@code unparsed-text()}) are not resolved.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if no registered {@link XmlProvider} recognises the underlying XPath implementation, or if the recognised provider cannot
-     *         apply the hardening settings to it.
+     * @throws IllegalStateException if the underlying XPath implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     *         apply its settings to it.
      */
     public static XPathFactory newXPathFactory() {
-        return CompositeProvider.getInstance().configure(XPathFactory.newInstance());
+        return dispatch(XPathFactory.newInstance());
+    }
+
+    private static HardeningException noProvider(final Object factory) {
+        return new HardeningException("No hardening recipe for JAXP factory class " + factory.getClass().getName());
     }
 
     private XmlFactories() {

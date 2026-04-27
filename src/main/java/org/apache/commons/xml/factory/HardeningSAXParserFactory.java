@@ -16,31 +16,34 @@
  */
 package org.apache.commons.xml.factory;
 
+import java.util.function.UnaryOperator;
+
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
 /**
- * Universal SAX wrapper that defers per-parser hardening to an {@link XmlProvider}'s {@link XmlProvider#configure(org.xml.sax.XMLReader)} method.
+ * Universal SAX wrapper that defers per-parser hardening to a supplied {@link XMLReader} hardener.
  *
  * <p>{@link SAXParserFactory} has no property API, only a feature API. Therefore, complex configuration must be performed on each new
- * {@link org.xml.sax.XMLReader} parser.</p>
+ * {@link XMLReader} parser.</p>
  */
 final class HardeningSAXParserFactory extends DelegatingSAXParserFactory {
 
-    private final XmlProvider provider;
+    private final UnaryOperator<XMLReader> hardener;
 
-    HardeningSAXParserFactory(final SAXParserFactory delegate, final XmlProvider provider) {
+    HardeningSAXParserFactory(final SAXParserFactory delegate, final UnaryOperator<XMLReader> hardener) {
         super(delegate);
-        this.provider = provider;
+        this.hardener = hardener;
     }
 
     @Override
     public SAXParser newSAXParser() throws ParserConfigurationException, SAXException {
         final SAXParser parser = super.newSAXParser();
-        provider.configure(parser.getXMLReader());
+        hardener.apply(parser.getXMLReader());
         return parser;
     }
 }

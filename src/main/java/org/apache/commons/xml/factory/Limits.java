@@ -16,8 +16,8 @@
  */
 package org.apache.commons.xml.factory;
 
-import static org.apache.commons.xml.factory.AbstractXmlProvider.setAttribute;
-import static org.apache.commons.xml.factory.AbstractXmlProvider.setProperty;
+import static org.apache.commons.xml.factory.JaxpSetters.setAttribute;
+import static org.apache.commons.xml.factory.JaxpSetters.setProperty;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

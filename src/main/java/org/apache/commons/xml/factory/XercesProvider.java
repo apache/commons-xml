@@ -16,6 +16,8 @@
  */
 package org.apache.commons.xml.factory;
 
+import static org.apache.commons.xml.factory.JaxpSetters.setFeature;
+
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,10 +38,10 @@ import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 
 /**
- * {@link XmlProvider} for the external Apache Xerces distribution (the {@code xerces:xercesImpl} artifact).
+ * Hardening recipes for the external Apache Xerces distribution (the {@code xerces:xercesImpl} artifact).
  *
  * <p>Factory classes live in the {@code org.apache.xerces.*} package. External Xerces does not ship a {@code TransformerFactory}, {@code XMLInputFactory} or
- * {@code XPathFactory}, so this provider only overrides DOM, SAX and Schema {@code configure} methods.</p>
+ * {@code XPathFactory}, so this class only handles DOM, SAX and Schema factories.</p>
  *
  * <p>Hardening recipe applied to every factory below uses the same building blocks:</p>
  * <ul>
@@ -60,10 +62,8 @@ import org.xml.sax.XMLReader;
  *         </ol>
  *     </li>
  * </ul>
- *
- * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
-public final class XercesProvider extends AbstractXmlProvider {
+final class XercesProvider {
 
     /**
      * Hardened Xerces {@link DocumentBuilderFactory} wrapper.
@@ -173,18 +173,7 @@ public final class XercesProvider extends AbstractXmlProvider {
         }
     }
 
-    /**
-     * Default constructor; invoked by {@link java.util.ServiceLoader} and the registry.
-     */
-    public XercesProvider() {
-        super("org.apache.xerces.jaxp.DocumentBuilderFactoryImpl",
-                "org.apache.xerces.jaxp.SAXParserFactoryImpl",
-                "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser",
-                "org.apache.xerces.jaxp.validation.XMLSchemaFactory");
-    }
-
-    @Override
-    public DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
+    static DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
         // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
@@ -197,16 +186,14 @@ public final class XercesProvider extends AbstractXmlProvider {
         return new HardeningDocumentBuilderFactory(factory, DenyAllResolver.ENTITY2);
     }
 
-    @Override
-    public SAXParserFactory configure(final SAXParserFactory factory) {
+    static SAXParserFactory configure(final SAXParserFactory factory) {
         // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // The remaining hardening (limits, entity resolver) lives in the XMLReader configure() because SAXParserFactory has no property API.
-        return new HardeningSAXParserFactory(factory, this);
+        return new HardeningSAXParserFactory(factory, XercesProvider::configure);
     }
 
-    @Override
-    public XMLReader configure(final XMLReader reader) {
+    static XMLReader configure(final XMLReader reader) {
         // Required: enables the JDK XMLSecurityManager limits on a raw reader (e.g. one Saxon picked).
         setFeature(reader, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
@@ -222,8 +209,7 @@ public final class XercesProvider extends AbstractXmlProvider {
         return reader;
     }
 
-    @Override
-    public SchemaFactory configure(final SchemaFactory factory) {
+    static SchemaFactory configure(final SchemaFactory factory) {
         // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         try {
@@ -236,5 +222,8 @@ public final class XercesProvider extends AbstractXmlProvider {
         factory.setResourceResolver(DenyAllResolver.LS_RESOURCE);
         // Required: Xerces' Schema does not propagate the SchemaFactory's resolver or security manager to Validator/ValidatorHandler; the wrapper re-installs.
         return new HardeningSchemaFactory(factory);
+    }
+
+    private XercesProvider() {
     }
 }

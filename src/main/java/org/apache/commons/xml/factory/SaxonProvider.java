@@ -27,13 +27,11 @@ import net.sf.saxon.xpath.XPathFactoryImpl;
 import org.xml.sax.XMLReader;
 
 /**
- * {@link XmlProvider} for Saxon-HE ({@code net.sf.saxon:Saxon-HE}).
+ * Hardening recipes for Saxon-HE ({@code net.sf.saxon:Saxon-HE}).
  *
  * <p>Saxon supplies {@link TransformerFactory} and {@link XPathFactory} implementations; it does not ship a DOM, SAX, StAX or Schema factory of its own.</p>
- *
- * <p>Must be declared {@code public} so {@link java.util.ServiceLoader} can load it from {@code META-INF/services/}.</p>
  */
-final class SaxonProvider extends AbstractXmlProvider {
+final class SaxonProvider {
 
     /**
      * A Saxon {@link Configuration} that locks down every channel through which Saxon would otherwise reach external resources.
@@ -42,7 +40,7 @@ final class SaxonProvider extends AbstractXmlProvider {
      *
      * <ol>
      *   <li><b>SAX layer.</b> {@link #makeParser} hands every {@link XMLReader} Saxon would otherwise use through
-     *   {@link CompositeProvider#configure(XMLReader)}, which routes it to the matching bundled {@link XmlProvider}. DOCTYPE, external entities and XInclude
+     *   {@link XmlFactories#harden(XMLReader)}, which routes it to the matching bundled hardening recipe. DOCTYPE, external entities and XInclude
      *   are refused at parse time.</li>
      *   <li><b>URI-resolution layer.</b> {@link Feature#ALLOWED_PROTOCOLS} is set to the empty string. This blocks XSLT inclusions {@code xsl:include},
      *   {@code xsl:import}, {@code xsl:source-document}, and the XPath/XSLT functions {@code fn:doc}, {@code fn:document}, {@code fn:unparsed-text},
@@ -68,7 +66,7 @@ final class SaxonProvider extends AbstractXmlProvider {
         @Override
         public XMLReader makeParser(final String className) throws TransformerFactoryConfigurationError {
             try {
-                return CompositeProvider.getInstance().configure(super.makeParser(className));
+                return XmlFactories.harden(super.makeParser(className));
             } catch (final HardeningException e) {
                 throw new TransformerFactoryConfigurationError(e);
             }
@@ -88,16 +86,7 @@ final class SaxonProvider extends AbstractXmlProvider {
         }
     }
 
-    /** Default constructor; invoked by {@link java.util.ServiceLoader} and the registry. */
-    public SaxonProvider() {
-        super("net.sf.saxon.TransformerFactoryImpl",
-                "com.saxonica.config.ProfessionalTransformerFactory",
-                "com.saxonica.config.EnterpriseTransformerFactory",
-                "net.sf.saxon.xpath.XPathFactoryImpl");
-    }
-
-    @Override
-    public TransformerFactory configure(final TransformerFactory factory) {
+    static TransformerFactory configure(final TransformerFactory factory) {
         try {
             return SaxonProviderConfigurer.configure(factory);
         } catch (LinkageError e) {
@@ -106,13 +95,15 @@ final class SaxonProvider extends AbstractXmlProvider {
         }
     }
 
-    @Override
-    public XPathFactory configure(final XPathFactory factory) {
+    static XPathFactory configure(final XPathFactory factory) {
         try {
             return SaxonProviderConfigurer.configure(factory);
         } catch (LinkageError e) {
             // Unlikely, but protects method execution from missing optional dependency
             throw new IllegalStateException(e);
         }
+    }
+
+    private SaxonProvider() {
     }
 }

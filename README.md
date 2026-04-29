@@ -63,8 +63,16 @@ stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying im
 
 ### Supported implementations
 
-Out of the box the library recognises the stock JDK JAXP implementations, Apache Xerces 2.x, Woodstox, and Saxon-HE. If
-a factory resolves to an implementation not covered by any bundled hardening recipe, every `XmlFactories` method throws
+The library recognises:
+
+- the stock JDK JAXP implementations,
+- Android,
+- Saxon-HE,
+- Apache Xalan,
+- Apache Xerces,
+- Woodstox.
+
+If a factory resolves to an implementation not covered by any bundled hardening recipe, every `XmlFactories` method throws
 `IllegalStateException` with a message naming the unsupported class. Adding support for a new JAXP implementation
 requires a code change to this library.
 
@@ -137,6 +145,28 @@ The hardening applies to documents parsed through the returned factory. Styleshe
 the implementation picks internally, and that parser may not be hardened (Saxon's TrAX is one such case, see Building
 below). Treat stylesheets and schemas as trusted input, or pre-parse them through a hardened `XmlFactories` parser and
 pass the result as a `DOMSource` or `SAXSource`.
+
+### Android compatibility
+
+The library is compiled to Java 8 bytecode and runs on any Android version that supports a Java 8 runtime (API 19 and
+above). What ships with the platform and what the application has to add varies by JAXP API:
+
+- **DOM** (`DocumentBuilderFactory`) and **SAX** (`SAXParserFactory`) ship in `android.jar` since API 1. DOM is backed by
+  KXmlParser (a kxml2 pull parser); SAX is a wrapper around the system `libexpat`. The hardened factories returned by
+  `XmlFactories` route through these built-in implementations.
+- **TrAX** (`TransformerFactory`) and **XPath** (`XPathFactory`) ship as Apache Xalan since Android 1.0. The hardened
+  factories receive the same JDK-style entity-expansion limits and deny-all resolver that the standalone Xalan recipe
+  applies.
+- **W3C XML Schema** (`SchemaFactory`) is **declared** in `android.jar` (the `javax.xml.validation.*` API is present)
+  but the platform ships **no implementation**.
+- **StAX** (`XMLInputFactory`) is **not** part of `android.jar` at any API level.
+
+The SAX path's native billion-laughs amplification protection lives in `libexpat` 2.4 (March 2022), which AOSP first
+shipped in **Android 13 (API 33)**. On API 33 and above the platform SAX parser blocks billion-laughs payloads natively;
+on older Android releases this specific defence could be unavailable, and a hostile internal-entity payload could
+amplify without bound. If your minimum-supported Android level is below 33 and you parse SAX input that you do not
+control, sanitise upstream of `XmlFactories`, or pre-parse with Apache Xerces (which carries its own entity-expansion
+limit) once you have added it to the classpath for schema support.
 
 ### Caching and thread-safety
 

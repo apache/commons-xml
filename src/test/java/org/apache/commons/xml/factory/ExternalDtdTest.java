@@ -16,6 +16,7 @@
  */
 package org.apache.commons.xml.factory;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +62,8 @@ class ExternalDtdTest {
     @Test
     @Tag("dom")
     void hardenedDomDoesNotLeak() {
+        Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
+                "Skipped: platform DOM does not resolve user-defined entities");
         AttackTestSupport.assertDomDoesNotLeak(xmlPayload());
     }
 
@@ -109,6 +112,8 @@ class ExternalDtdTest {
     @Test
     @Tag("dom")
     void unconfiguredDomResolves() {
+        Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
+                "Skipped: platform DOM does not resolve user-defined entities");
         AttackTestSupport.assertDomResolves(xmlPayload());
     }
 

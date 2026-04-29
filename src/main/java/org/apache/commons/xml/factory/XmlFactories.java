@@ -69,6 +69,8 @@ public final class XmlFactories {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl":
                 return StockJdkProvider.configure(factory);
+            case "org.apache.harmony.xml.parsers.DocumentBuilderFactoryImpl":
+                return AndroidProvider.configure(factory);
             case "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl":
                 return XercesProvider.configure(factory);
             default:
@@ -80,6 +82,8 @@ public final class XmlFactories {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl":
                 return StockJdkProvider.configure(factory);
+            case "org.apache.harmony.xml.parsers.SAXParserFactoryImpl":
+                return AndroidProvider.configure(factory);
             case "org.apache.xerces.jaxp.SAXParserFactoryImpl":
                 return XercesProvider.configure(factory);
             default:
@@ -150,6 +154,8 @@ public final class XmlFactories {
         switch (reader.getClass().getName()) {
             case "com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser":
                 return StockJdkProvider.configure(reader);
+            case "org.apache.harmony.xml.ExpatReader":
+                return AndroidProvider.configure(reader);
             case "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser":
                 return XercesProvider.configure(reader);
             default:

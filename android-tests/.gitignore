@@ -1,0 +1,4 @@
+# Android Gradle build outputs
+.gradle
+build
+local.properties

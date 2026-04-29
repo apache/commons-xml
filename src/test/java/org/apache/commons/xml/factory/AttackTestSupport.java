@@ -50,6 +50,7 @@ import javax.xml.validation.Validator;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
@@ -65,8 +66,13 @@ import org.xml.sax.helpers.DefaultHandler;
  *       layer is expected to reject the attack outright.</li>
  *   <li>{@code assert*DoesNotLeak(...)} runs the payload through a hardened factory and asserts the {@link #LEAKED_MARKER} string does not appear in the
  *       output. The parse may either throw or succeed silently. Used where the JAXP API does not give a clean throw hook (SAX content stream, transformer
- *       output) or where the XML spec relaxes the constraint that would otherwise force a throw (DOM with an external DTD subset).</li>
+ *       output) or where the XML spec lets the parser silently skip undeclared entities once the external DTD subset has been refused (DOM with an external
+ *       DTD subset).</li>
  * </ul>
+ *
+ * <p>DOM tests that depend on user-defined entity machinery should gate themselves with {@link org.junit.jupiter.api.Assumptions#assumeTrue} on
+ * {@link #DOM_RESOLVES_INTERNAL_ENTITIES} so they skip on platforms (such as Android with KXmlParser) whose DOM parser does not surface the entity events that
+ * the strict {@link #assertDomBlocks} assertion expects.</p>
  *
  * <p>The unconfigured-side positive controls keep verbs that match the JAXP type they exercise: {@code assert*Resolves(payload)} for direct parsing,
  * {@code assert*Compiles(...)} for {@link SchemaFactory} / {@link TransformerFactory} compilation, {@code assertTransformerSucceeds(payload)} for
@@ -98,10 +104,27 @@ final class AttackTestSupport {
             + "</xs:schema>\n";
 
     /**
+     * Benign payload used to probe whether the DOM parser inlines a user-defined internal general entity into the tree.
+     */
+    private static final String DOM_INTERNAL_ENTITY_PROBE =
+            "<?xml version=\"1.0\"?>\n"
+            + "<!DOCTYPE root [<!ENTITY foo \"bar\">]>\n"
+            + "<root>&foo;</root>";
+
+    /**
+     * Set to {@code true} when the platform's DOM parser supports user-defined internal entities.
+     *
+     * <p>Android's {@code KXmlParser} currently fails this test.</p>
+     */
+    static final boolean DOM_RESOLVES_INTERNAL_ENTITIES = probeDomResolvesInternalEntities();
+
+    /** {@code true} when running on Android (Dalvik / ART), {@code false} on any standard JVM. Probed once via {@code Class.forName} on {@code android.os.Build}. */
+    static final boolean IS_ANDROID = probeAndroid();
+
+    /**
      * URL form of the JDK's entity-expansion limit property.
      */
     private static final String JDK_ENTITY_EXPANSION_LIMIT = "http://www.oracle.com/xml/jaxp/properties/entityExpansionLimit";
-
     /**
      * Text planted in every fixture under {@code src/test/resources/leaked/}.
      *
@@ -128,7 +151,12 @@ final class AttackTestSupport {
     static void assertDomDoesNotLeak(final String payload) {
         assertNoLeak(() -> {
             final Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload));
-            return doc.getDocumentElement() == null ? "" : doc.getDocumentElement().getTextContent();
+            if (doc.getDocumentElement() == null) {
+                return "";
+            }
+            // Harmony's DOM returns null from getTextContent() on an element whose only children are unresolved EntityReference nodes.
+            final String text = doc.getDocumentElement().getTextContent();
+            return text == null ? "" : text;
         }, "DOM", SAXException.class);
     }
 
@@ -150,7 +178,9 @@ final class AttackTestSupport {
     static void assertDomResolves(final String payload) {
         assertParseSucceeds(() -> {
             final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            if (!IS_ANDROID) {
+                factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            }
             suppressException(() -> factory.setAttribute(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             factory.newDocumentBuilder().parse(inputSource(payload));
         }, "DOM");
@@ -258,7 +288,9 @@ final class AttackTestSupport {
     static void assertSaxResolves(final String payload) {
         assertParseSucceeds(() -> {
             final SAXParserFactory factory = SAXParserFactory.newInstance();
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            if (!IS_ANDROID) {
+                factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            }
             final XMLReader reader = factory.newSAXParser().getXMLReader();
             suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             parseQuietly(reader, payload);
@@ -283,7 +315,9 @@ final class AttackTestSupport {
     static void assertSchemaCompiles(final Source xsd) {
         assertParseSucceeds(() -> {
             final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            if (!IS_ANDROID) {
+                factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            }
             suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
             factory.newSchema(xsd);
         }, "Schema compile");
@@ -532,16 +566,39 @@ final class AttackTestSupport {
     /** Builds a {@link SAXSource} wrapping the payload, parsed by a deliberately permissive SAX parser; used by the unconfigured-side TrAX controls. */
     private static SAXSource permissiveSaxSource(final String xml) throws ParserConfigurationException, org.xml.sax.SAXException {
         final SAXParserFactory parserFactory = SAXParserFactory.newInstance();
-        parserFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+        if (!IS_ANDROID) {
+            parserFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+        }
         final XMLReader reader = parserFactory.newSAXParser().getXMLReader();
         suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
         return new SAXSource(reader, new InputSource(new StringReader(xml)));
     }
 
+    private static boolean probeAndroid() {
+        try {
+            Class.forName("android.os.Build");
+            return true;
+        } catch (final ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private static boolean probeDomResolvesInternalEntities() {
+        try {
+            final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(inputSource(DOM_INTERNAL_ENTITY_PROBE));
+            final Element root = doc.getDocumentElement();
+            return root != null && "bar".equals(root.getTextContent());
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
     /** Builds a raw {@link XMLReader} from a deliberately permissive {@link SAXParserFactory} and hardens it via {@link XmlFactories#harden(XMLReader)}. */
     private static XMLReader rawHardenedReader() throws Exception {
         final SAXParserFactory factory = SAXParserFactory.newInstance();
-        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+        if (!IS_ANDROID) {
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+        }
         return XmlFactories.harden(factory.newSAXParser().getXMLReader());
     }
 

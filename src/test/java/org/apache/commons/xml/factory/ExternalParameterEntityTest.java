@@ -16,8 +16,20 @@
  */
 package org.apache.commons.xml.factory;
 
+import java.io.StringReader;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.SAXParserFactory;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Checks whether parsers can pull in an external DTD via a parameter-entity reference inside the internal subset.
@@ -39,7 +51,71 @@ import org.junit.jupiter.api.Test;
  */
 class ExternalParameterEntityTest {
 
+    /**
+     * Benign payload used to probe whether the DOM parser tolerates a parameter-entity reference inside the internal subset.
+     */
+    private static final String DOM_PARAMETER_ENTITY_PROBE =
+            "<?xml version=\"1.0\"?>\n"
+            + "<!DOCTYPE root [\n"
+            + "  <!ENTITY % p \"<!ENTITY child 'A'>\">\n"
+            + "  %p;\n"
+            + "]>\n"
+            + "<root>&child;</root>";
+
+    /**
+     * Set to {@code true} when the platform's DOM parser supports parameter-entity references.
+     *
+     * <p>Android's {@code KXmlParser} currently fails this test.</p>
+     */
+    private static final boolean DOM_ACCEPTS_PARAMETER_ENTITIES = probeDomAcceptsParameterEntities();
+
     private static final String INSERTION = "&leaked;";
+
+    /**
+     * Benign payload used to probe whether the SAX parser invokes the {@link org.xml.sax.EntityResolver} for an external parameter-entity reference. The
+     * payload references an external parameter entity by an unfetchable {@code about:invalid} URL; the probe's resolver returns an empty {@code InputSource}
+     * to let parsing complete without a network call, and reports whether it was consulted at all.
+     */
+    private static final String SAX_PARAMETER_ENTITY_PROBE =
+            "<?xml version=\"1.0\"?>\n"
+            + "<!DOCTYPE root [\n"
+            + "  <!ENTITY % p SYSTEM \"about:invalid\">\n"
+            + "  %p;\n"
+            + "]>\n"
+            + "<root/>";
+
+    /**
+     * Set to {@code true} when the platform's SAX parser invokes the entity resolver for an external parameter-entity reference. False on Android because
+     * libexpat's default leaves {@code XML_SetParamEntityParsing} disabled and the harmony native bridge does not enable it, so {@code %p;} is silently
+     * skipped without consulting the resolver.
+     */
+    private static final boolean SAX_RESOLVES_PARAMETER_ENTITIES = probeSaxResolvesParameterEntities();
+
+    private static boolean probeDomAcceptsParameterEntities() {
+        try {
+            DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(AttackTestSupport.inputSource(DOM_PARAMETER_ENTITY_PROBE));
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean probeSaxResolvesParameterEntities() {
+        final AtomicBoolean called = new AtomicBoolean();
+        Assertions.assertDoesNotThrow(() -> {
+            final XMLReader reader = SAXParserFactory.newInstance().newSAXParser().getXMLReader();
+            reader.setEntityResolver((publicId, systemId) -> {
+                if ("about:invalid".equals(systemId)) {
+                    called.set(true);
+                }
+                return new InputSource(new StringReader(""));
+            });
+            reader.setContentHandler(new DefaultHandler());
+            reader.setErrorHandler(new DefaultHandler());
+            reader.parse(AttackTestSupport.inputSource(SAX_PARAMETER_ENTITY_PROBE));
+        });
+        return called.get();
+    }
 
     private static String withDoctype(final String rootQName, final String body) {
         return "<?xml version=\"1.0\"?>\n"
@@ -65,12 +141,16 @@ class ExternalParameterEntityTest {
     @Test
     @Tag("dom")
     void hardenedDomBlocks() {
+        Assumptions.assumeTrue(DOM_ACCEPTS_PARAMETER_ENTITIES,
+                "Skipped: platform DOM does not accept parameter entities");
         AttackTestSupport.assertDomBlocks(xmlPayload());
     }
 
     @Test
     @Tag("sax")
     void hardenedSaxBlocks() {
+        Assumptions.assumeTrue(SAX_RESOLVES_PARAMETER_ENTITIES,
+                "Skipped: platform SAX parser does not invoke the entity resolver for parameter entities");
         AttackTestSupport.assertSaxBlocks(xmlPayload());
     }
 
@@ -107,12 +187,16 @@ class ExternalParameterEntityTest {
     @Test
     @Tag("sax")
     void hardenedXmlReaderBlocks() {
+        Assumptions.assumeTrue(SAX_RESOLVES_PARAMETER_ENTITIES,
+                "Skipped: platform SAX parser does not invoke the entity resolver for parameter entities");
         AttackTestSupport.assertXmlReaderBlocks(xmlPayload());
     }
 
     @Test
     @Tag("dom")
     void unconfiguredDomResolves() {
+        Assumptions.assumeTrue(DOM_ACCEPTS_PARAMETER_ENTITIES,
+                "Skipped: platform DOM does not accept parameter entities");
         AttackTestSupport.assertDomResolves(xmlPayload());
     }
 

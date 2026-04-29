@@ -24,15 +24,12 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.Source;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 import javax.xml.validation.ValidatorHandler;
 
-import org.w3c.dom.ls.LSResourceResolver;
 import org.xml.sax.EntityResolver;
-import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
@@ -88,73 +85,24 @@ final class XercesProvider {
         }
     }
 
-    /**
-     * Hardened Xerces {@link Schema} wrapper.
-     *
-     * <p>Required because Xerces' {@link Schema} does not propagate the {@link SchemaFactory}'s resolver or security manager to
-     * {@link Validator} / {@link ValidatorHandler} products, so this wrapper re-installs the deny-all resolver (closes the DOCTYPE SYSTEM vector
-     * inside the instance document) and pins the JDK 25 limits on every product.</p>
-     */
-    private static final class HardeningSchema extends Schema {
-
-        private final Schema delegate;
-        private final LSResourceResolver resolver;
-
-        HardeningSchema(final Schema delegate, final LSResourceResolver resolver) {
-            this.delegate = delegate;
-            this.resolver = resolver;
+    private static Validator hardenValidator(final Validator validator) {
+        try {
+            Limits.applyToXerces(validator.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
+        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+            throw new HardeningException("Failed to read Xerces security manager from Validator", e);
         }
-
-        @Override
-        public Validator newValidator() {
-            final Validator validator = delegate.newValidator();
-            try {
-                // Defense-in-depth: pin the validator's security manager to JDK 25 limits.
-                Limits.applyToXerces(validator.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
-            } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-                throw new HardeningException("Failed to read Xerces security manager from Validator", e);
-            }
-            // Required: re-install the deny-all resolver since SchemaFactory-level hardening does not propagate to Validators.
-            validator.setResourceResolver(resolver);
-            return validator;
-        }
-
-        @Override
-        public ValidatorHandler newValidatorHandler() {
-            final ValidatorHandler handler = delegate.newValidatorHandler();
-            try {
-                // Defense-in-depth: pin the handler's security manager to JDK 25 limits.
-                Limits.applyToXerces(handler.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
-            } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-                throw new HardeningException("Failed to read Xerces security manager from ValidatorHandler", e);
-            }
-            // Required: re-install the deny-all resolver since SchemaFactory-level hardening does not propagate to ValidatorHandlers.
-            handler.setResourceResolver(resolver);
-            return handler;
-        }
+        validator.setResourceResolver(DenyAllResolver.LS_RESOURCE);
+        return validator;
     }
 
-    /**
-     * Hardened Xerces {@link SchemaFactory} wrapper.
-     *
-     * <p>Wraps every produced {@link Schema} in {@link HardeningSchema} so the SchemaFactory's resolver and security manager are re-installed on each
-     * {@link Validator} / {@link ValidatorHandler}.</p>
-     */
-    private static final class HardeningSchemaFactory extends DelegatingSchemaFactory {
-
-        HardeningSchemaFactory(final SchemaFactory delegate) {
-            super(delegate);
+    private static ValidatorHandler hardenValidatorHandler(final ValidatorHandler handler) {
+        try {
+            Limits.applyToXerces(handler.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
+        } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+            throw new HardeningException("Failed to read Xerces security manager from ValidatorHandler", e);
         }
-
-        @Override
-        public Schema newSchema() throws SAXException {
-            return new HardeningSchema(super.newSchema(), super.getResourceResolver());
-        }
-
-        @Override
-        public Schema newSchema(final Source[] schemas) throws SAXException {
-            return new HardeningSchema(super.newSchema(schemas), super.getResourceResolver());
-        }
+        handler.setResourceResolver(DenyAllResolver.LS_RESOURCE);
+        return handler;
     }
 
     /**
@@ -189,6 +137,8 @@ final class XercesProvider {
     static SAXParserFactory configure(final SAXParserFactory factory) {
         // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        // Useful: namespaces should be recognized by default
+        factory.setNamespaceAware(true);
         // The remaining hardening (limits, entity resolver) lives in the XMLReader configure() because SAXParserFactory has no property API.
         return new HardeningSAXParserFactory(factory, XercesProvider::configure);
     }
@@ -210,18 +160,19 @@ final class XercesProvider {
     }
 
     static SchemaFactory configure(final SchemaFactory factory) {
-        // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).
+        // Required: enables Xerces' built-in SecurityManager.
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         try {
-            // Defense-in-depth: pin the factory's security manager to JDK 25 limits; Xerces' own defaults are looser than even JDK 8.
+            // Required: pins limits to JDK 25 secure values, otherwise Xerces' own caps are looser than JDK 8.
             Limits.applyToXerces(factory.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
         } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
             throw new HardeningException("Failed to read Xerces security manager from SchemaFactory", e);
         }
-        // Required: Xerces does not honour JAXP 1.5 ACCESS_EXTERNAL_*; install the deny-all resolver so xs:import/xs:include/xs:redefine cannot fetch.
+        // Required: Xerces ignores ACCESS_EXTERNAL_*; the deny-all resolver blocks xs:import/include/redefine fetches.
         factory.setResourceResolver(DenyAllResolver.LS_RESOURCE);
-        // Required: Xerces' Schema does not propagate the SchemaFactory's resolver or security manager to Validator/ValidatorHandler; the wrapper re-installs.
-        return new HardeningSchemaFactory(factory);
+        // Required: routes every newSchema(Source[]) parse through an XmlFactories-hardened reader, and re-installs limits + resolver on each Validator and
+        // ValidatorHandler since Xerces' Schema does not propagate factory state through.
+        return new HardeningSchemaFactory(factory, XercesProvider::hardenValidator, XercesProvider::hardenValidatorHandler);
     }
 
     private XercesProvider() {

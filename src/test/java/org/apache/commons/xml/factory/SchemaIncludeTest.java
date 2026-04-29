@@ -35,6 +35,6 @@ class SchemaIncludeTest {
 
     @Test
     void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.resourceSource(RESOURCE));
+        AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.resourceSource(RESOURCE));
     }
 }

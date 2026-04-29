@@ -18,7 +18,7 @@ import com.android.build.api.dsl.ManagedVirtualDevice
 
 plugins {
     id("com.android.library") version "8.6.1"
-    id("de.mannodermaus.android-junit") version "2.0.1"
+    id("de.mannodermaus.android-junit5") version "1.14.0.0"
 }
 
 val libraryVersion = "0.1.0-SNAPSHOT"
@@ -66,7 +66,7 @@ android {
 junitPlatform {
     filters {
         // Pass single tag expression
-        includeTags("dom | sax | schema")
+        includeTags("dom | sax | schema | trax")
     }
 }
 

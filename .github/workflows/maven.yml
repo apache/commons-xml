@@ -82,7 +82,9 @@ jobs:
       - name: Set up Maven cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  #v5.0.5
         with:
-          path: ~/.m2/repository
+          path: |
+            ~/.m2/repository
+            ~/.gradle/wrapper
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
@@ -96,5 +98,104 @@ jobs:
         with:
           name: surefire-reports-${{ matrix.os }}-jdk${{ matrix.java-version }}
           path: '**/target/surefire-reports/'
+          if-no-files-found: ignore
+          retention-days: 14
+
+  build-android:
+
+    # API 33 mirrors the Pixel 6a AVD baseline configured in android-tests/build.gradle.kts; API 35 covers the latest stable platform.
+    # Linux runners only: GitHub-hosted macOS / Windows runners no longer ship KVM / HAXM acceleration, and arm64 / x86 emulator images
+    # without acceleration boot too slowly to be useful in CI.
+    name: build (android, API ${{ matrix.api-level }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [ 33, 35 ]
+
+    steps:
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # We only restore, since the JDK build's cache will be more comprehensive
+      - name: Set up Maven cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build library JAR
+        run: mvn --errors --show-version --batch-mode --no-transfer-progress -DskipTests package
+
+      - name: AVD cache
+        id: avd-cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.android/avd
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+
+      # Only runs on a cache miss to create an AVD snapshot and speed up the next builds
+      - name: Generate AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: default
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot"
+
+      - name: Gradle cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android-tests/*.gradle.kts', 'android-tests/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: default
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: android-tests
+          script: ./gradlew connectedDebugAndroidTest
+
+      - name: Upload Android test reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-test-reports-api${{ matrix.api-level }}
+          path: |
+            android-tests/build/outputs/androidTest-results/
+            android-tests/build/reports/androidTests/
           if-no-files-found: ignore
           retention-days: 14

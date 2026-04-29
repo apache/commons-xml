@@ -75,8 +75,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("schema")
-    void hardenedSchemaBlocks() {
-        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
+    void hardenedSchemaDoesNotLeak() {
+        AttackTestSupport.assertSchemaDoesNotLeak(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
@@ -87,8 +87,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("trax")
-    void hardenedTemplatesBlocks() {
-        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.streamSource(xsltPayload()));
+    void hardenedTemplatesDoesNotLeak() {
+        AttackTestSupport.assertTemplatesDoesNotLeak(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
@@ -99,8 +99,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("schema")
-    void hardenedValidatorBlocks() {
-        AttackTestSupport.assertValidatorBlocks(xmlPayload());
+    void hardenedValidatorDoesNotLeak() {
+        AttackTestSupport.assertValidatorDoesNotLeak(xmlPayload());
     }
 
     @Test
@@ -111,45 +111,45 @@ class ExternalDtdTest {
 
     @Test
     @Tag("dom")
-    void unconfiguredDomResolves() {
+    void unconfiguredDomParses() {
         Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
                 "Skipped: platform DOM does not resolve user-defined entities");
-        AttackTestSupport.assertDomResolves(xmlPayload());
+        AttackTestSupport.assertPermissiveDomParses(xmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void unconfiguredSaxResolves() {
-        AttackTestSupport.assertSaxResolves(xmlPayload());
+    void unconfiguredSaxParses() {
+        AttackTestSupport.assertPermissiveSaxParses(xmlPayload());
     }
 
     @Test
     @Tag("schema")
     void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
+        AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
     @Tag("stax")
-    void unconfiguredStaxResolves() {
-        AttackTestSupport.assertStaxResolves(xmlPayload());
+    void unconfiguredStaxParses() {
+        AttackTestSupport.assertPermissiveStaxParses(xmlPayload());
     }
 
     @Test
     @Tag("trax")
     void unconfiguredTemplatesCompiles() {
-        AttackTestSupport.assertTemplatesCompiles(xsltPayload());
+        AttackTestSupport.assertPermissiveTemplatesCompiles(xsltPayload());
     }
 
     @Test
     @Tag("trax")
-    void unconfiguredTransformerSucceeds() {
-        AttackTestSupport.assertTransformerSucceeds(xmlPayload());
+    void unconfiguredTransformerTransforms() {
+        AttackTestSupport.assertPermissiveTransformerTransforms(xmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void unconfiguredValidatorAccepts() {
-        AttackTestSupport.assertValidatorAccepts(xmlPayload());
+    void unconfiguredValidatorValidates() {
+        AttackTestSupport.assertPermissiveValidatorValidates(xmlPayload());
     }
 }

@@ -25,6 +25,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
@@ -79,6 +80,8 @@ final class StockJdkProvider {
     static SAXParserFactory configure(final SAXParserFactory factory) {
         // Required: enables the JDK XMLSecurityManager limits.
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        // Useful: namespaces should be recognized by default
+        factory.setNamespaceAware(true);
         // The remaining hardening (limits, ACCESS_EXTERNAL_*) lives in the XMLReader configure() because SAXParserFactory has no property API.
         return new HardeningSAXParserFactory(factory, StockJdkProvider::configure);
     }
@@ -105,16 +108,16 @@ final class StockJdkProvider {
     }
 
     static TransformerFactory configure(final TransformerFactory factory) {
-        // Defense-in-depth: pin to the JDK's bundled SAX parser; see FEATURE_OVERRIDE_DEFAULT_PARSER.
-        setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
-        // Required: enables the JDK XMLSecurityManager limits used by the internal SAX parser.
+        // Required: enables XSLTC's runtime evaluator limits (entity expansion, attribute count, element/name depth).
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Defense-in-depth: pin to JDK 25 limits so older JDKs do not fall back to looser secure values.
         Limits.applyToJdkTransformer(factory);
-        // Defense-in-depth: already FSP-secure defaults, set explicitly so they are not relaxed via system property.
+        // Required: XSLTC's compile path (Util.getInputSource) propagates the factory's ACCESS_EXTERNAL_DTD onto the SAXSource's reader.
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        // Required: Prevents resolution of `xsl:import`, `xsl:include` and `document()`.
         setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
-        return factory;
+        // Required: XSLTC's source-document parsing path provisions its own SAX reader if the source does not have its own parser.
+        return new HardeningTransformerFactory((SAXTransformerFactory) factory);
     }
 
     static XPathFactory configure(final XPathFactory factory) {
@@ -126,16 +129,16 @@ final class StockJdkProvider {
     }
 
     static SchemaFactory configure(final SchemaFactory factory) {
-        // Defense-in-depth: pin to the JDK's bundled SAX parser; see FEATURE_OVERRIDE_DEFAULT_PARSER.
-        setFeature(factory, FEATURE_OVERRIDE_DEFAULT_PARSER, false);
-        // Required: enables the JDK XMLSecurityManager limits; propagates to Validator and ValidatorHandler.
+        // Required: enables the JDK XMLSecurityManager limits.
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Defense-in-depth: pin to JDK 25 limits so older JDKs do not fall back to looser secure values.
         Limits.applyToJdkSchema(factory);
-        // Defense-in-depth: already FSP-secure defaults, set explicitly so they are not relaxed via system property.
+        // Required: XMLSchemaLoader propagates this onto its inner SAX reader, otherwise it is overrideable by system properties
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        // Required: gates xs:import/include/redefine fetches and xsi:schemaLocation.
         setProperty(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-        return factory;
+        // Required: routes every newSchema(Source[]) parse through an XmlFactories-hardened reader.
+        return new HardeningSchemaFactory(factory);
     }
 
     private StockJdkProvider() {

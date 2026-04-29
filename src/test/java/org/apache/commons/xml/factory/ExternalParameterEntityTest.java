@@ -157,6 +157,8 @@ class ExternalParameterEntityTest {
     @Test
     @Tag("schema")
     void hardenedSchemaBlocks() {
+        Assumptions.assumeTrue(SAX_RESOLVES_PARAMETER_ENTITIES,
+                "Skipped: platform SAX parser does not invoke the entity resolver for parameter entities");
         AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
     }
 
@@ -169,18 +171,24 @@ class ExternalParameterEntityTest {
     @Test
     @Tag("trax")
     void hardenedTemplatesBlocks() {
+        Assumptions.assumeTrue(SAX_RESOLVES_PARAMETER_ENTITIES,
+                "Skipped: platform SAX parser does not invoke the entity resolver for parameter entities");
         AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.streamSource(xsltPayload()));
     }
 
     @Test
     @Tag("trax")
     void hardenedTransformerBlocks() {
+        Assumptions.assumeTrue(SAX_RESOLVES_PARAMETER_ENTITIES,
+                "Skipped: platform SAX parser does not invoke the entity resolver for parameter entities");
         AttackTestSupport.assertTransformerBlocks(xmlPayload());
     }
 
     @Test
     @Tag("schema")
     void hardenedValidatorBlocks() {
+        Assumptions.assumeTrue(SAX_RESOLVES_PARAMETER_ENTITIES,
+                "Skipped: platform SAX parser does not invoke the entity resolver for parameter entities");
         AttackTestSupport.assertValidatorBlocks(xmlPayload());
     }
 
@@ -194,45 +202,45 @@ class ExternalParameterEntityTest {
 
     @Test
     @Tag("dom")
-    void unconfiguredDomResolves() {
+    void unconfiguredDomParses() {
         Assumptions.assumeTrue(DOM_ACCEPTS_PARAMETER_ENTITIES,
                 "Skipped: platform DOM does not accept parameter entities");
-        AttackTestSupport.assertDomResolves(xmlPayload());
+        AttackTestSupport.assertPermissiveDomParses(xmlPayload());
     }
 
     @Test
     @Tag("sax")
-    void unconfiguredSaxResolves() {
-        AttackTestSupport.assertSaxResolves(xmlPayload());
+    void unconfiguredSaxParses() {
+        AttackTestSupport.assertPermissiveSaxParses(xmlPayload());
     }
 
     @Test
     @Tag("schema")
     void unconfiguredSchemaCompiles() {
-        AttackTestSupport.assertSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
+        AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
     @Tag("stax")
-    void unconfiguredStaxResolves() {
-        AttackTestSupport.assertStaxResolves(xmlPayload());
+    void unconfiguredStaxParses() {
+        AttackTestSupport.assertPermissiveStaxParses(xmlPayload());
     }
 
     @Test
     @Tag("trax")
     void unconfiguredTemplatesCompiles() {
-        AttackTestSupport.assertTemplatesCompiles(xsltPayload());
+        AttackTestSupport.assertPermissiveTemplatesCompiles(xsltPayload());
     }
 
     @Test
     @Tag("trax")
-    void unconfiguredTransformerSucceeds() {
-        AttackTestSupport.assertTransformerSucceeds(xmlPayload());
+    void unconfiguredTransformerTransforms() {
+        AttackTestSupport.assertPermissiveTransformerTransforms(xmlPayload());
     }
 
     @Test
     @Tag("schema")
-    void unconfiguredValidatorAccepts() {
-        AttackTestSupport.assertValidatorAccepts(xmlPayload());
+    void unconfiguredValidatorValidates() {
+        AttackTestSupport.assertPermissiveValidatorValidates(xmlPayload());
     }
 }

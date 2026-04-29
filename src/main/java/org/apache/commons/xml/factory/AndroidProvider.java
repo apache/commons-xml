@@ -22,12 +22,16 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
+import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.ext.LexicalHandler;
 
 /**
@@ -72,35 +76,20 @@ final class AndroidProvider {
      *
      * <p>Merely <em>declaring</em> an external subset does not cause the parse to throw.</p>
      */
-    private static final class DtdAwareDenyResolver implements EntityResolver, LexicalHandler {
-
-        private boolean inDtd;
-        private String dtdPublicId;
-        private String dtdSystemId;
+    private static final class DtdAwareDenyResolver extends DefaultHandler2 {
 
         private static String forbiddenMessage(final String publicId, final String systemId) {
             return String.format("External Entity: failed to read external entity (publicId='%s', systemId='%s'); external entity access is denied.",
                     publicId, systemId);
         }
 
-        @Override
-        public void comment(final char[] ch, final int start, final int length) {
-            // no-op
-        }
-
-        @Override
-        public void endCDATA() {
-            // no-op
-        }
+        private String dtdPublicId;
+        private String dtdSystemId;
+        private boolean inDtd;
 
         @Override
         public void endDTD() {
             inDtd = false;
-        }
-
-        @Override
-        public void endEntity(final String name) {
-            // no-op
         }
 
         @Override
@@ -112,34 +101,87 @@ final class AndroidProvider {
         }
 
         @Override
-        public void startCDATA() {
-            // no-op
-        }
-
-        @Override
         public void startDTD(final String name, final String publicId, final String systemId) {
             inDtd = true;
             dtdPublicId = publicId;
             dtdSystemId = systemId;
         }
+    }
+
+    /** {@link SAXParser} wrapper whose {@link #getXMLReader()} returns a {@link GuardedXMLReader}. */
+    private static final class GuardedSAXParser extends DelegatingSAXParser {
+
+        private final XMLReader guardedReader;
+
+        GuardedSAXParser(final SAXParser delegate, final XMLReader guardedReader) {
+            super(delegate);
+            this.guardedReader = guardedReader;
+        }
 
         @Override
-        public void startEntity(final String name) {
-            // no-op
+        public XMLReader getXMLReader() {
+            return guardedReader;
         }
     }
 
+    /** {@link SAXParserFactory} wrapper that produces {@link GuardedSAXParser}s. */
+    private static final class GuardedSAXParserFactory extends DelegatingSAXParserFactory {
+
+        GuardedSAXParserFactory(final SAXParserFactory delegate) {
+            super(delegate);
+        }
+
+        @Override
+        public SAXParser newSAXParser() throws ParserConfigurationException, SAXException {
+            final SAXParser parser = super.newSAXParser();
+            return new GuardedSAXParser(parser, configure(parser.getXMLReader()));
+        }
+    }
+
+    /**
+     * {@link XMLReader} wrapper that surfaces ExpatReader's two-feature conflict at {@code setFeature} time instead of {@code parse} time.
+     *
+     * <p>Android's {@code ExpatReader.parse()} throws {@link SAXNotSupportedException} when {@code namespaces} and {@code namespace-prefixes} are both
+     * enabled; on Android 33+ {@code namespaces} defaults to {@code true}, so any caller (notably Apache Xalan's identity transformer) that flips
+     * {@code namespace-prefixes} on triggers the throw at parse time. This wrapper relocates the throw to the offending {@code setFeature} call, where
+     * Apache Xalan's {@code try { ... } catch (SAXException) { /* We don't care. *<!-- -->/ }} swallows it cleanly.</p>
+     */
+    static final class GuardedXMLReader extends DelegatingXMLReader {
+
+        GuardedXMLReader(final XMLReader delegate) {
+            super(delegate);
+        }
+
+        @Override
+        public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+            if (value
+                    && (NAMESPACE_PREFIXES_FEATURE.equals(name) && super.getFeature(NAMESPACES_FEATURE)
+                     || NAMESPACES_FEATURE.equals(name)         && super.getFeature(NAMESPACE_PREFIXES_FEATURE))) {
+                throw new SAXNotSupportedException(
+                        "ExpatReader cannot have both '" + NAMESPACES_FEATURE
+                      + "' and '" + NAMESPACE_PREFIXES_FEATURE + "' enabled simultaneously");
+            }
+            super.setFeature(name, value);
+        }
+    }
     private static final String LEXICAL_HANDLER_PROPERTY = "http://xml.org/sax/properties/lexical-handler";
+
+    private static final String NAMESPACES_FEATURE = "http://xml.org/sax/features/namespaces";
+
+    private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
 
     static DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
         return factory;
     }
 
     static SAXParserFactory configure(final SAXParserFactory factory) {
-        return new HardeningSAXParserFactory(factory, AndroidProvider::configure);
+        return new GuardedSAXParserFactory(factory);
     }
 
     static XMLReader configure(final XMLReader reader) {
+        if (reader instanceof GuardedXMLReader) {
+            return reader;
+        }
         final DtdAwareDenyResolver resolver = new DtdAwareDenyResolver();
         reader.setEntityResolver(resolver);
         try {
@@ -147,7 +189,7 @@ final class AndroidProvider {
         } catch (final SAXException e) {
             // ExpatReader recognises the lexical-handler property; if a future replacement does not, fall through and lose subset-vs-entity discrimination.
         }
-        return reader;
+        return new GuardedXMLReader(reader);
     }
 
     private AndroidProvider() {

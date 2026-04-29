@@ -58,6 +58,9 @@ final class SaxonProvider {
             // URI-resolution layer: empty string disallows every URI scheme. Saxon front-ends the existing ResourceResolver with a ProtocolRestrictor; a
             // later setResourceResolver call would cancel this filter, so this stays last in the constructor.
             setConfigurationProperty(Feature.ALLOWED_PROTOCOLS, "");
+            // Use the parser below for both style and source:
+            setStyleParserClass("#DEFAULT");
+            setSourceParserClass("#DEFAULT");
         }
 
         /**

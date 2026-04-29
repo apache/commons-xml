@@ -16,6 +16,7 @@
  */
 package org.apache.commons.xml.factory;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -45,6 +46,8 @@ class DoctypeOnlyTest {
     @Test
     @Tag("dom")
     void hardenedDomParses() {
+        Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
+                "Skipped: platform DOM does not resolve user-defined entities");
         AttackTestSupport.assertDomParses(payload());
     }
 

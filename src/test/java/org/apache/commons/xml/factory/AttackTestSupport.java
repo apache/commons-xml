@@ -36,14 +36,17 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import javax.xml.transform.ErrorListener;
 import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
@@ -51,32 +54,38 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Shared fixtures for attack tests.
  *
- * <p>The hardened-side helpers come in two flavours, distinguished by their suffix:</p>
+ * <p>The hardened-side helpers come in three flavours, distinguished by their suffix:</p>
  *
  * <ul>
  *   <li>{@code assert*Blocks(...)} runs the payload through a hardened factory from {@link XmlFactories} and asserts the parse throws. Used when the hardening
  *       layer is expected to reject the attack outright.</li>
- *   <li>{@code assert*DoesNotLeak(...)} runs the payload through a hardened factory and asserts the {@link #LEAKED_MARKER} string does not appear in the
- *       output. The parse may either throw or succeed silently. Used where the JAXP API does not give a clean throw hook (SAX content stream, transformer
- *       output) or where the XML spec lets the parser silently skip undeclared entities once the external DTD subset has been refused (DOM with an external
- *       DTD subset).</li>
+ *   <li>{@code assert*DoesNotLeak(...)} runs the payload through a hardened factory and asserts the parse completes without throwing and without producing the
+ *       {@link #LEAKED_MARKER} string. Used when the hardening contract guarantees the parse succeeds but never resolves the external resource (e.g.
+ *       {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skipping the external subset, with the body's undeclared entity reference dropped per XML 1.0
+ *       §4.1).</li>
+ *   <li>{@code assert*BlocksOrDoesNotLeak(...)} accepts either of the previous two outcomes. Used where the same hardening contract surfaces differently across
+ *       providers (e.g. stock-JDK XSLTC throws via {@code ACCESS_EXTERNAL_DTD} while Apache Xalan silently skips because its source-rewrite routes parsing
+ *       through a {@code XERCES_LOAD_EXTERNAL_DTD=false} reader).</li>
  * </ul>
  *
  * <p>DOM tests that depend on user-defined entity machinery should gate themselves with {@link org.junit.jupiter.api.Assumptions#assumeTrue} on
  * {@link #DOM_RESOLVES_INTERNAL_ENTITIES} so they skip on platforms (such as Android with KXmlParser) whose DOM parser does not surface the entity events that
  * the strict {@link #assertDomBlocks} assertion expects.</p>
  *
- * <p>The unconfigured-side positive controls keep verbs that match the JAXP type they exercise: {@code assert*Resolves(payload)} for direct parsing,
- * {@code assert*Compiles(...)} for {@link SchemaFactory} / {@link TransformerFactory} compilation, {@code assertTransformerSucceeds(payload)} for
- * {@code Transformer.transform}, {@code assertValidatorAccepts(payload)} for {@code Validator.validate}.</p>
+ * <p>The permissive-side positive controls mirror the hardened-side verbs with an {@code assertPermissive*} prefix: {@code assertPermissive*Parses} for direct
+ * parsing, {@code assertPermissive*Compiles} for {@link SchemaFactory} / {@link TransformerFactory} compilation, {@code assertPermissiveTransformerTransforms}
+ * for {@code Transformer.transform}, {@code assertPermissiveValidatorValidates} for {@code Validator.validate}. Both sides perform the same operation; the
+ * prefix marks which factory hardening level the assertion is set against.</p>
  *
  * <p>Schema and Templates assertions take a {@link Source} so the same helper covers both inline-string payloads and resource-backed wrappers; build the
  * source via {@link #streamSource(String)} for a string payload or {@link #resourceSource(String)} for a file under {@code src/test/resources/leaked/}. The
@@ -88,6 +97,49 @@ import org.xml.sax.helpers.DefaultHandler;
  */
 final class AttackTestSupport {
 
+    /**
+     * Strict reporter installed on every hardened factory, parser, validator and transformer in the helpers below.
+     *
+     * <p>The hardening layer signals every blocked external fetch and every SAX-fatal it could not silently skip via the standard JAXP error channels:
+     * {@link ErrorListener#error(TransformerException)} / {@link ErrorListener#fatalError(TransformerException) fatalError} on the TrAX side and
+     * {@link ErrorHandler#error(SAXParseException) error} / {@link ErrorHandler#fatalError(SAXParseException) fatalError} on the SAX side. Both Apache Xalan's
+     * {@code DefaultErrorHandler(false)} and Saxon's {@code StandardErrorListener} are pathologically lenient defaults that swallow these events; SAX's
+     * {@link DefaultHandler} treats {@code error} as a no-op. The test fixture replaces those defaults with a strict reporter that re-throws on every reported
+     * error or fatalError so the helpers can observe the block via the same mechanism the spec uses to surface it. Warnings stay silent: they are not security
+     * signals.</p>
+     */
+    private static final class StrictReporter implements ErrorListener, ErrorHandler {
+
+        @Override
+        public void error(final SAXParseException exception) throws SAXException {
+            throw exception;
+        }
+
+        @Override
+        public void error(final TransformerException exception) throws TransformerException {
+            throw exception;
+        }
+
+        @Override
+        public void fatalError(final SAXParseException exception) throws SAXException {
+            throw exception;
+        }
+
+        @Override
+        public void fatalError(final TransformerException exception) throws TransformerException {
+            throw exception;
+        }
+
+        @Override
+        public void warning(final SAXParseException exception) {
+            // not a security signal
+        }
+
+        @Override
+        public void warning(final TransformerException exception) {
+            // not a security signal
+        }
+    }
     /**
      * Trivial W3C XML Schema that validates {@link #xmlBody(String)} output.
      */
@@ -102,7 +154,6 @@ final class AttackTestSupport {
             + "    </xs:complexType>\n"
             + "  </xs:element>\n"
             + "</xs:schema>\n";
-
     /**
      * Benign payload used to probe whether the DOM parser inlines a user-defined internal general entity into the tree.
      */
@@ -110,17 +161,14 @@ final class AttackTestSupport {
             "<?xml version=\"1.0\"?>\n"
             + "<!DOCTYPE root [<!ENTITY foo \"bar\">]>\n"
             + "<root>&foo;</root>";
-
     /**
      * Set to {@code true} when the platform's DOM parser supports user-defined internal entities.
      *
      * <p>Android's {@code KXmlParser} currently fails this test.</p>
      */
     static final boolean DOM_RESOLVES_INTERNAL_ENTITIES = probeDomResolvesInternalEntities();
-
     /** {@code true} when running on Android (Dalvik / ART), {@code false} on any standard JVM. Probed once via {@code Class.forName} on {@code android.os.Build}. */
     static final boolean IS_ANDROID = probeAndroid();
-
     /**
      * URL form of the JDK's entity-expansion limit property.
      */
@@ -132,6 +180,7 @@ final class AttackTestSupport {
      * presence is the leak signal.</p>
      */
     static final String LEAKED_MARKER = "All your base are belong to us";
+    private static final StrictReporter STRICT_REPORTER = new StrictReporter();
 
     /**
      * Asserts a hardened DOM parse of the payload throws.
@@ -139,25 +188,17 @@ final class AttackTestSupport {
      * <p>{@link DocumentBuilder#parse(InputSource)} via {@link XmlFactories#newDocumentBuilderFactory()}; only a thrown exception passes.</p>
      */
     static void assertDomBlocks(final String payload) {
-        assertParseFails(() -> XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload)), "DOM", SAXException.class);
+        assertParseFails(() -> strictDocumentBuilder(XmlFactories.newDocumentBuilderFactory()).parse(inputSource(payload)), "DOM", SAXException.class);
     }
 
     /**
-     * Asserts a hardened DOM parse either throws or completes without leaked content.
+     * Asserts a hardened DOM parse completes without throwing and without leaked content.
      *
-     * <p>{@link DocumentBuilder#parse(InputSource)} via {@link XmlFactories#newDocumentBuilderFactory()}; XML 1.0 §4.1 permits silent skipping of undeclared
-     * entities when an external subset is declared but unread.</p>
+     * <p>{@link DocumentBuilder#parse(InputSource)} via {@link XmlFactories#newDocumentBuilderFactory()}; use this when the hardening guarantee is "the parse
+     * succeeds but never resolves the external resource", e.g. when {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skips the external subset.</p>
      */
     static void assertDomDoesNotLeak(final String payload) {
-        assertNoLeak(() -> {
-            final Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload));
-            if (doc.getDocumentElement() == null) {
-                return "";
-            }
-            // Harmony's DOM returns null from getTextContent() on an element whose only children are unresolved EntityReference nodes.
-            final String text = doc.getDocumentElement().getTextContent();
-            return text == null ? "" : text;
-        }, "DOM", SAXException.class);
+        assertNoLeakStrict(() -> domParseAndCaptureText(payload), "DOM");
     }
 
     /**
@@ -166,28 +207,11 @@ final class AttackTestSupport {
      * <p>{@link DocumentBuilder#parse(InputSource)} via {@link XmlFactories#newDocumentBuilderFactory()}; positive control for DOCTYPE-only payloads.</p>
      */
     static void assertDomParses(final String payload) {
-        assertParseSucceeds(() -> XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputSource(payload)), "DOM");
+        assertParseSucceeds(() -> strictDocumentBuilder(XmlFactories.newDocumentBuilderFactory()).parse(inputSource(payload)), "DOM");
     }
 
     /**
-     * Asserts a permissive DOM parse succeeds.
-     *
-     * <p>{@link DocumentBuilder#parse(InputSource)} via {@link DocumentBuilderFactory#newInstance()} with FSP off; positive control proving the payload is
-     * well-formed.</p>
-     */
-    static void assertDomResolves(final String payload) {
-        assertParseSucceeds(() -> {
-            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            if (!IS_ANDROID) {
-                factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            }
-            suppressException(() -> factory.setAttribute(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-            factory.newDocumentBuilder().parse(inputSource(payload));
-        }, "DOM");
-    }
-
-    /**
-     * Skeleton for every {@code assert*DoesNotLeak} helper.
+     * Skeleton for every {@code assert*BlocksOrDoesNotLeak} helper.
      *
      * <p>Treats a thrown exception of one of the {@code expected} types as "hardening blocked at parse" (acceptable); otherwise asserts the captured output
      * omits {@link #LEAKED_MARKER}. A throw whose type does not match {@code expected} fails the test, so unrelated failures (e.g. a {@link HardeningException}
@@ -198,7 +222,7 @@ final class AttackTestSupport {
      * @param expected    the exception types any of which the hardening layer may surface as a clean rejection.
      */
     @SafeVarargs
-    private static void assertNoLeak(final ThrowingSupplier<String> action, final String description, final Class<? extends Throwable>... expected) {
+    private static void assertNoLeakOrThrows(final ThrowingSupplier<String> action, final String description, final Class<? extends Throwable>... expected) {
         final String output;
         try {
             output = action.get();
@@ -208,6 +232,22 @@ final class AttackTestSupport {
             }
             throw new AssertionError(blockedDescription(description) + " (got " + thrown.getClass().getName() + ")", thrown);
         }
+        assertFalse(output.contains(LEAKED_MARKER),
+                "Hardening did not block " + description + "; output contained marker '" + LEAKED_MARKER + "'.\nFull output:\n" + output);
+    }
+
+    /**
+     * Skeleton for every strict {@code assert*DoesNotLeak} helper.
+     *
+     * <p>Runs the action, lets any thrown exception fail the assertion, and asserts that the captured output omits {@link #LEAKED_MARKER}. Use this when the
+     * hardening contract guarantees "parses successfully without resolving the external resource"; use {@link #assertNoLeakOrThrows} when the contract is
+     * "either blocks at parse or completes without leaked content".</p>
+     *
+     * @param action      the parse to execute, returning the captured output text checked for {@link #LEAKED_MARKER}.
+     * @param description short label naming the JAXP surface under test.
+     */
+    private static void assertNoLeakStrict(final ThrowingSupplier<String> action, final String description) {
+        final String output = assertDoesNotThrow(action, "Hardened " + description + " parse must not throw");
         assertFalse(output.contains(LEAKED_MARKER),
                 "Hardening did not block " + description + "; output contained marker '" + LEAKED_MARKER + "'.\nFull output:\n" + output);
     }
@@ -241,8 +281,9 @@ final class AttackTestSupport {
     /**
      * Asserts the supplied action does not throw.
      *
-     * <p>Generic primitive underlying every {@code assert*Parses(...)} / {@code assert*Compiles(...)} / {@code assert*Resolves(...)} /
-     * {@code assert*Succeeds(...)} / {@code assertValidatorAccepts(...)} helper; exposed for tests that compose a non-standard call.</p>
+     * <p>Generic primitive underlying every {@code assert*Parses(...)} / {@code assert*Compiles(...)} / {@code assert*Transforms(...)} /
+     * {@code assert*Validates(...)} helper (and their permissive {@code assertPermissive*} counterparts); exposed for tests that compose a non-standard
+     * call.</p>
      *
      * @param action      the parse to execute.
      * @param description short label included in the failure message.
@@ -252,31 +293,20 @@ final class AttackTestSupport {
     }
 
     /**
-     * Asserts a hardened SAX parse of the payload throws.
+     * Asserts a permissive DOM parse succeeds.
      *
-     * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; only a thrown exception passes.</p>
+     * <p>{@link DocumentBuilder#parse(InputSource)} via {@link DocumentBuilderFactory#newInstance()} with FSP off; positive control proving the payload is
+     * well-formed.</p>
      */
-    static void assertSaxBlocks(final String payload) {
-        assertParseFails(() -> parseQuietly(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX", SAXException.class);
-    }
-
-    /**
-     * Asserts a hardened SAX parse either throws or completes without leaked content.
-     *
-     * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; XML 1.0 §4.1 permits silent skipping of undeclared
-     * entities when an external subset is declared but unread.</p>
-     */
-    static void assertSaxDoesNotLeak(final String payload) {
-        assertNoLeak(() -> captureCharacters(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX", SAXException.class);
-    }
-
-    /**
-     * Asserts a hardened SAX parse succeeds.
-     *
-     * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; positive control for DOCTYPE-only payloads.</p>
-     */
-    static void assertSaxParses(final String payload) {
-        assertParseSucceeds(() -> parseQuietly(XmlFactories.newSAXParserFactory().newSAXParser().getXMLReader(), payload), "SAX");
+    static void assertPermissiveDomParses(final String payload) {
+        assertParseSucceeds(() -> {
+            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            if (!IS_ANDROID) {
+                factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            }
+            suppressException(() -> factory.setAttribute(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            strictDocumentBuilder(factory).parse(inputSource(payload));
+        }, "DOM");
     }
 
     /**
@@ -285,25 +315,16 @@ final class AttackTestSupport {
      * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link SAXParserFactory#newInstance()} with FSP off; positive control proving the payload is
      * well-formed.</p>
      */
-    static void assertSaxResolves(final String payload) {
+    static void assertPermissiveSaxParses(final String payload) {
         assertParseSucceeds(() -> {
             final SAXParserFactory factory = SAXParserFactory.newInstance();
             if (!IS_ANDROID) {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
-            final XMLReader reader = factory.newSAXParser().getXMLReader();
+            final XMLReader reader = strictXMLReader(factory);
             suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-            parseQuietly(reader, payload);
+            consumeXmlReader(reader, payload);
         }, "SAX");
-    }
-
-    /**
-     * Asserts a hardened Schema compilation throws.
-     *
-     * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; only a thrown exception passes.</p>
-     */
-    static void assertSchemaBlocks(final Source xsd) {
-        assertParseFails(() -> XmlFactories.newSchemaFactory().newSchema(xsd), "Schema compile", SAXException.class, SecurityException.class);
     }
 
     /**
@@ -312,15 +333,121 @@ final class AttackTestSupport {
      * <p>{@link SchemaFactory#newSchema(Source)} via {@link SchemaFactory#newInstance(String)} with FSP off; positive control proving the wrapper is
      * well-formed.</p>
      */
-    static void assertSchemaCompiles(final Source xsd) {
+    static void assertPermissiveSchemaCompiles(final Source xsd) {
         assertParseSucceeds(() -> {
             final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             if (!IS_ANDROID) {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
             suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-            factory.newSchema(xsd);
+            strictSchema(factory, xsd);
         }, "Schema compile");
+    }
+
+    /**
+     * Asserts a permissive StAX parse succeeds.
+     *
+     * <p>{@link XMLStreamReader} from {@link XMLInputFactory#newInstance()} with FSP off; positive control proving the payload is well-formed.</p>
+     */
+    static void assertPermissiveStaxParses(final String payload) {
+        assertParseSucceeds(() -> {
+            final XMLInputFactory factory = XMLInputFactory.newInstance();
+            suppressException(() -> factory.setProperty(XMLConstants.FEATURE_SECURE_PROCESSING, false));
+            // URL form of the JDK property; JDK 8's XMLSecurityManager.getIndex only matches this form, JDK 11+ accepts both.
+            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            consumeStreamReader(factory, payload);
+        }, "StAX");
+    }
+
+    /**
+     * Asserts a permissive Templates compilation succeeds.
+     *
+     * <p>{@link TransformerFactory#newTransformer(Source)} via {@link TransformerFactory#newInstance()} with FSP off; positive control proving the stylesheet
+     * is well-formed.</p>
+     */
+    static void assertPermissiveTemplatesCompiles(final String xslt) {
+        assertParseSucceeds(() -> {
+            final TransformerFactory factory = TransformerFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            strictTemplates(factory, permissiveSaxSource(xslt));
+        }, "Templates compile");
+    }
+
+    /**
+     * Asserts a permissive identity Transformer succeeds.
+     *
+     * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} via {@link TransformerFactory#newInstance()} with FSP off; positive control proving
+     * the payload is well-formed.</p>
+     */
+    static void assertPermissiveTransformerTransforms(final String payload) {
+        assertParseSucceeds(() -> {
+            final TransformerFactory factory = TransformerFactory.newInstance();
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            strictTransformer(factory).transform(permissiveSaxSource(payload), new StreamResult(new StringWriter()));
+        }, "Transformer");
+    }
+
+    /**
+     * Asserts a permissive Validator validation succeeds.
+     *
+     * <p>{@link Validator#validate(Source)} on a validator from {@link #BENIGN_SCHEMA} compiled via {@link SchemaFactory#newInstance(String)} with FSP off;
+     * positive control proving the instance is well-formed.</p>
+     */
+    static void assertPermissiveValidatorValidates(final String xml) {
+        assertParseSucceeds(() -> {
+            final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
+            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            strictValidator(strictSchema(factory, streamSource(BENIGN_SCHEMA))).validate(streamSource(xml));
+        }, "Validator");
+    }
+
+    /**
+     * Asserts a hardened SAX parse of the payload throws.
+     *
+     * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; only a thrown exception passes.</p>
+     */
+    static void assertSaxBlocks(final String payload) {
+        assertParseFails(() -> consumeXmlReader(strictXMLReader(XmlFactories.newSAXParserFactory()), payload), "SAX", SAXException.class);
+    }
+
+    /**
+     * Asserts a hardened SAX parse completes without throwing and without leaked content.
+     *
+     * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; use this when the hardening guarantee is "the parse
+     * succeeds but never resolves the external resource", e.g. when {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skips the external subset.</p>
+     */
+    static void assertSaxDoesNotLeak(final String payload) {
+        assertNoLeakStrict(() -> captureCharacters(strictXMLReader(XmlFactories.newSAXParserFactory()), payload), "SAX");
+    }
+
+    /**
+     * Asserts a hardened SAX parse succeeds.
+     *
+     * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; positive control for DOCTYPE-only payloads.</p>
+     */
+    static void assertSaxParses(final String payload) {
+        assertParseSucceeds(() -> consumeXmlReader(strictXMLReader(XmlFactories.newSAXParserFactory()), payload), "SAX");
+    }
+
+    /**
+     * Asserts a hardened Schema compilation throws.
+     *
+     * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; only a thrown exception passes.</p>
+     */
+    static void assertSchemaBlocks(final Source xsd) {
+        assertParseFails(() -> strictSchema(XmlFactories.newSchemaFactory(), xsd), "Schema compile", SAXException.class, SecurityException.class);
+    }
+
+    /**
+     * Asserts a hardened Schema compilation completes without throwing.
+     *
+     * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; use this when the hardening contract guarantees the compile
+     * succeeds but never resolves the external resource (e.g. {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skipping the external subset, with the body's
+     * undeclared entity reference dropped per XML 1.0 §4.1).</p>
+     */
+    static void assertSchemaDoesNotLeak(final Source xsd) {
+        assertParseSucceeds(() -> strictSchema(XmlFactories.newSchemaFactory(), xsd), "Schema compile");
     }
 
     /**
@@ -335,30 +462,6 @@ final class AttackTestSupport {
     }
 
     /**
-     * Asserts a hardened StAX parse succeeds.
-     *
-     * <p>{@link XMLStreamReader} from {@link XmlFactories#newXMLInputFactory()}; positive control for DOCTYPE-only payloads.</p>
-     */
-    static void assertStaxParses(final String payload) {
-        assertParseSucceeds(() -> consumeStreamReader(XmlFactories.newXMLInputFactory(), payload), "StAX");
-    }
-
-    /**
-     * Asserts a permissive StAX parse succeeds.
-     *
-     * <p>{@link XMLStreamReader} from {@link XMLInputFactory#newInstance()} with FSP off; positive control proving the payload is well-formed.</p>
-     */
-    static void assertStaxResolves(final String payload) {
-        assertParseSucceeds(() -> {
-            final XMLInputFactory factory = XMLInputFactory.newInstance();
-            suppressException(() -> factory.setProperty(XMLConstants.FEATURE_SECURE_PROCESSING, false));
-            // URL form of the JDK property; JDK 8's XMLSecurityManager.getIndex only matches this form, JDK 11+ accepts both.
-            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-            consumeStreamReader(factory, payload);
-        }, "StAX");
-    }
-
-    /**
      * Asserts a hardened Templates compile-and-transform throws.
      *
      * <p>{@link TransformerFactory#newTemplates(Source)} via {@link XmlFactories#newTransformerFactory()} followed by transform; either step throwing
@@ -366,27 +469,13 @@ final class AttackTestSupport {
      */
     static void assertTemplatesBlocks(final Source xslt) {
         assertParseFails(() -> {
-            final Templates templates = XmlFactories.newTransformerFactory().newTemplates(xslt);
-            // Xalan return `null` if the template fails
+            final Templates templates = strictTemplates(XmlFactories.newTransformerFactory(), xslt);
+            // Xalan returns `null` if the template fails
             if (templates == null) {
                 throw new TransformerException("Transformer factory returned null");
             }
-            templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(new StringWriter()));
+            strictTransformer(templates).transform(streamSource("<root/>"), new StreamResult(new StringWriter()));
         }, "Templates", TransformerException.class);
-    }
-
-    /**
-     * Asserts a permissive Templates compilation succeeds.
-     *
-     * <p>{@link TransformerFactory#newTransformer(Source)} via {@link TransformerFactory#newInstance()} with FSP off; positive control proving the stylesheet
-     * is well-formed.</p>
-     */
-    static void assertTemplatesCompiles(final String xslt) {
-        assertParseSucceeds(() -> {
-            final TransformerFactory factory = TransformerFactory.newInstance();
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            factory.newTransformer(permissiveSaxSource(xslt));
-        }, "Templates compile");
     }
 
     /**
@@ -395,16 +484,18 @@ final class AttackTestSupport {
      * <p>{@link TransformerFactory#newTemplates(Source)} via {@link XmlFactories#newTransformerFactory()} followed by transform; Saxon's TrAX path may swallow
      * the entity-expansion error and produce empty output.</p>
      */
+    static void assertTemplatesBlocksOrDoesNotLeak(final Source xslt) {
+        assertNoLeakOrThrows(() -> templatesCompileAndTransform(xslt), "Templates", TransformerException.class);
+    }
+
+    /**
+     * Asserts a hardened Templates compile-and-transform completes without throwing and without leaked content.
+     *
+     * <p>{@link TransformerFactory#newTemplates(Source)} via {@link XmlFactories#newTransformerFactory()} followed by transform; use this when the hardening
+     * contract guarantees the compile and transform succeed but never resolve the external resource.</p>
+     */
     static void assertTemplatesDoesNotLeak(final Source xslt) {
-        assertNoLeak(() -> {
-            final StringWriter sink = new StringWriter();
-            final Templates templates = XmlFactories.newTransformerFactory().newTemplates(xslt);
-            // Xalan return `null` if the template fails
-            if (templates != null) {
-                templates.newTransformer().transform(streamSource("<root/>"), new StreamResult(sink));
-            }
-            return sink.toString();
-        }, "Templates", TransformerException.class);
+        assertNoLeakStrict(() -> templatesCompileAndTransform(xslt), "Templates");
     }
 
     /**
@@ -415,7 +506,7 @@ final class AttackTestSupport {
      */
     static void assertTransformerBlocks(final String payload) {
         assertParseFails(
-                () -> XmlFactories.newTransformerFactory().newTransformer().transform(streamSource(payload), new StreamResult(new StringWriter())),
+                () -> strictTransformer(XmlFactories.newTransformerFactory()).transform(streamSource(payload), new StreamResult(new StringWriter())),
                 "Transformer", TransformerException.class);
     }
 
@@ -425,41 +516,18 @@ final class AttackTestSupport {
      * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} via {@link XmlFactories#newTransformerFactory()}; Saxon's TrAX path may swallow
      * internal errors and produce empty output.</p>
      */
+    static void assertTransformerBlocksOrDoesNotLeak(final String payload) {
+        assertNoLeakOrThrows(() -> identityTransformAndCapture(payload), "Transformer", TransformerException.class);
+    }
+
+    /**
+     * Asserts a hardened identity Transformer completes without throwing and without leaked content.
+     *
+     * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} via {@link XmlFactories#newTransformerFactory()}; use this when the hardening
+     * contract guarantees the transform succeeds but never resolves the external resource.</p>
+     */
     static void assertTransformerDoesNotLeak(final String payload) {
-        assertNoLeak(() -> {
-            final StringWriter sink = new StringWriter();
-            XmlFactories.newTransformerFactory().newTransformer().transform(streamSource(payload), new StreamResult(sink));
-            return sink.toString();
-        }, "Transformer", TransformerException.class);
-    }
-
-    /**
-     * Asserts a permissive identity Transformer succeeds.
-     *
-     * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} via {@link TransformerFactory#newInstance()} with FSP off; positive control proving
-     * the payload is well-formed.</p>
-     */
-    static void assertTransformerSucceeds(final String payload) {
-        assertParseSucceeds(() -> {
-            final TransformerFactory factory = TransformerFactory.newInstance();
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            factory.newTransformer().transform(permissiveSaxSource(payload), new StreamResult(new StringWriter()));
-        }, "Transformer");
-    }
-
-    /**
-     * Asserts a permissive Validator validation succeeds.
-     *
-     * <p>{@link Validator#validate(Source)} on a validator from {@link #BENIGN_SCHEMA} compiled via {@link SchemaFactory#newInstance(String)} with FSP off;
-     * positive control proving the instance is well-formed.</p>
-     */
-    static void assertValidatorAccepts(final String xml) {
-        assertParseSucceeds(() -> {
-            final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-            factory.newSchema(streamSource(BENIGN_SCHEMA)).newValidator().validate(streamSource(xml));
-        }, "Validator");
+        assertNoLeakStrict(() -> identityTransformAndCapture(payload), "Transformer");
     }
 
     /**
@@ -470,8 +538,20 @@ final class AttackTestSupport {
      */
     static void assertValidatorBlocks(final String xml) {
         assertParseFails(
-                () -> XmlFactories.newSchemaFactory().newSchema(streamSource(BENIGN_SCHEMA)).newValidator().validate(streamSource(xml)),
+                () -> strictValidator(strictSchema(XmlFactories.newSchemaFactory(), streamSource(BENIGN_SCHEMA))).validate(streamSource(xml)),
                 "Validator", SAXException.class, SecurityException.class);
+    }
+
+    /**
+     * Asserts a hardened Validator validation completes without throwing.
+     *
+     * <p>{@link Validator#validate(Source)} on a validator from {@link #BENIGN_SCHEMA} compiled via {@link XmlFactories#newSchemaFactory()}; use this when the
+     * hardening contract guarantees the validate succeeds but never resolves the external resource.</p>
+     */
+    static void assertValidatorDoesNotLeak(final String xml) {
+        assertParseSucceeds(
+                () -> strictValidator(strictSchema(XmlFactories.newSchemaFactory(), streamSource(BENIGN_SCHEMA))).validate(streamSource(xml)),
+                "Validator");
     }
 
     /**
@@ -480,17 +560,17 @@ final class AttackTestSupport {
      * <p>{@link XMLReader#parse(InputSource)} on a raw reader hardened via {@link XmlFactories#harden(XMLReader)}; only a thrown exception passes.</p>
      */
     static void assertXmlReaderBlocks(final String payload) {
-        assertParseFails(() -> parseQuietly(rawHardenedReader(), payload), "XMLReader", SAXException.class);
+        assertParseFails(() -> consumeXmlReader(rawHardenedReader(), payload), "XMLReader", SAXException.class);
     }
 
     /**
-     * Asserts a hardened-in-place XMLReader parse either throws or completes without leaked content.
+     * Asserts a hardened-in-place XMLReader parse completes without throwing and without leaked content.
      *
-     * <p>{@link XMLReader#parse(InputSource)} on a raw reader hardened via {@link XmlFactories#harden(XMLReader)}; XML 1.0 §4.1 permits silent skipping of
-     * undeclared entities when an external subset is declared but unread.</p>
+     * <p>{@link XMLReader#parse(InputSource)} on a raw reader hardened via {@link XmlFactories#harden(XMLReader)}; use this when the hardening contract
+     * guarantees the parse succeeds but never resolves the external resource.</p>
      */
     static void assertXmlReaderDoesNotLeak(final String payload) {
-        assertNoLeak(() -> captureCharacters(rawHardenedReader(), payload), "XMLReader", SAXException.class);
+        assertNoLeakStrict(() -> captureCharacters(rawHardenedReader(), payload), "XMLReader");
     }
 
     /**
@@ -500,7 +580,7 @@ final class AttackTestSupport {
      * payloads.</p>
      */
     static void assertXmlReaderParses(final String payload) {
-        assertParseSucceeds(() -> parseQuietly(rawHardenedReader(), payload), "XMLReader");
+        assertParseSucceeds(() -> consumeXmlReader(rawHardenedReader(), payload), "XMLReader");
     }
 
     /**
@@ -522,8 +602,7 @@ final class AttackTestSupport {
                 text.append(ch, start, length);
             }
         });
-        reader.setErrorHandler(new DefaultHandler());
-        reader.parse(inputSource(payload));
+        strictXMLReader(reader).parse(inputSource(payload));
         return text.toString();
     }
 
@@ -551,27 +630,42 @@ final class AttackTestSupport {
         }
     }
 
+    /** Parses the payload through the supplied reader, discarding events; used by the SAX-based {@code Parses} / {@code Blocks} helpers. */
+    private static void consumeXmlReader(final XMLReader reader, final String payload) throws Exception {
+        reader.setContentHandler(new DefaultHandler());
+        strictXMLReader(reader).parse(inputSource(payload));
+    }
+
+    private static String domParseAndCaptureText(final String payload) throws Exception {
+        final Document doc = strictDocumentBuilder(XmlFactories.newDocumentBuilderFactory()).parse(inputSource(payload));
+        if (doc.getDocumentElement() == null) {
+            return "";
+        }
+        // Harmony's DOM returns null from getTextContent() on an element whose only children are unresolved EntityReference nodes.
+        final String text = doc.getDocumentElement().getTextContent();
+        return text == null ? "" : text;
+    }
+
+    private static String identityTransformAndCapture(final String payload) throws TransformerException {
+        final StringWriter sink = new StringWriter();
+        strictTransformer(XmlFactories.newTransformerFactory()).transform(streamSource(payload), new StreamResult(sink));
+        return sink.toString();
+    }
+
     /** Builds an {@link InputSource} backed by a {@link StringReader} over the payload. */
     static InputSource inputSource(final String xml) {
         return new InputSource(new StringReader(xml));
     }
 
-    /** Parses the payload through the supplied reader, discarding events; used by the SAX-based {@code Parses} / {@code Blocks} helpers. */
-    private static void parseQuietly(final XMLReader reader, final String payload) throws Exception {
-        reader.setContentHandler(new DefaultHandler());
-        reader.setErrorHandler(new DefaultHandler());
-        reader.parse(inputSource(payload));
-    }
-
-    /** Builds a {@link SAXSource} wrapping the payload, parsed by a deliberately permissive SAX parser; used by the unconfigured-side TrAX controls. */
-    private static SAXSource permissiveSaxSource(final String xml) throws ParserConfigurationException, org.xml.sax.SAXException {
-        final SAXParserFactory parserFactory = SAXParserFactory.newInstance();
-        if (!IS_ANDROID) {
-            parserFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-        }
-        final XMLReader reader = parserFactory.newSAXParser().getXMLReader();
+    /**
+     * Builds a {@link SAXSource} wrapping the payload, without an explicit parser; used by the unconfigured-side TrAX controls.
+     */
+    private static SAXSource permissiveSaxSource(final String xml) {
+        final SAXParserFactory factory = SAXParserFactory.newInstance();
+        factory.setNamespaceAware(true);
+        final XMLReader reader = strictXMLReader(factory);
         suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-        return new SAXSource(reader, new InputSource(new StringReader(xml)));
+        return new SAXSource(IS_ANDROID ? new AndroidProvider.GuardedXMLReader(reader) : reader, new InputSource(new StringReader(xml)));
     }
 
     private static boolean probeAndroid() {
@@ -621,7 +715,81 @@ final class AttackTestSupport {
 
     /** Builds a {@link StreamSource} backed by a {@link StringReader} over the payload. */
     static StreamSource streamSource(final String xml) {
-        return new StreamSource(new StringReader(xml));
+        StreamSource streamSource = new StreamSource(new StringReader(xml));
+        streamSource.setSystemId("test:fixture");
+        return streamSource;
+    }
+
+    /**
+     * Builds a {@link DocumentBuilder} from {@code factory} with {@link #STRICT_REPORTER} installed as its error handler.
+     */
+    private static DocumentBuilder strictDocumentBuilder(final DocumentBuilderFactory factory) throws ParserConfigurationException {
+        final DocumentBuilder builder = factory.newDocumentBuilder();
+        builder.setErrorHandler(STRICT_REPORTER);
+        return builder;
+    }
+
+    /**
+     * Compiles {@code xsds} into a {@link Schema} using {@code factory}, with {@link #STRICT_REPORTER} installed on the factory before compile.
+     */
+    private static Schema strictSchema(final SchemaFactory factory, final Source... xsds) throws SAXException {
+        factory.setErrorHandler(STRICT_REPORTER);
+        return factory.newSchema(xsds);
+    }
+
+    /**
+     * Compiles {@code xslt} into a {@link Templates} using {@code factory}, with {@link #STRICT_REPORTER} installed on the factory before compile.
+     */
+    private static Templates strictTemplates(final TransformerFactory factory, final Source xslt) throws TransformerConfigurationException {
+        factory.setErrorListener(STRICT_REPORTER);
+        return factory.newTemplates(xslt);
+    }
+
+    /**
+     * Builds an identity {@link Transformer} from {@code factory} with {@link #STRICT_REPORTER} installed on both the factory and the resulting transformer.
+     */
+    private static Transformer strictTransformer(final TransformerFactory factory) throws TransformerConfigurationException {
+        factory.setErrorListener(STRICT_REPORTER);
+        final Transformer transformer = factory.newTransformer();
+        transformer.setErrorListener(STRICT_REPORTER);
+        return transformer;
+    }
+
+    /**
+     * Builds a {@link Transformer} from {@code templates} with {@link #STRICT_REPORTER} installed as its error listener.
+     */
+    private static Transformer strictTransformer(final Templates templates) throws TransformerConfigurationException {
+        final Transformer transformer = templates.newTransformer();
+        transformer.setErrorListener(STRICT_REPORTER);
+        return transformer;
+    }
+
+    /**
+     * Builds a {@link Validator} from {@code schema} with {@link #STRICT_REPORTER} installed as its error handler.
+     */
+    private static Validator strictValidator(final Schema schema) {
+        final Validator validator = schema.newValidator();
+        validator.setErrorHandler(STRICT_REPORTER);
+        return validator;
+    }
+
+    /**
+     * Builds an {@link XMLReader} from {@code factory} with {@link #STRICT_REPORTER} installed as its error handler.
+     */
+    private static XMLReader strictXMLReader(final SAXParserFactory factory) {
+        try {
+            return strictXMLReader(factory.newSAXParser().getXMLReader());
+        } catch (ParserConfigurationException | SAXException e) {
+            throw new AssertionError("Failed to create permissive XMLReader", e);
+        }
+    }
+
+    /**
+     * Installs {@link #STRICT_REPORTER} as the error handler on {@code reader} and returns it; for raw-reader paths.
+     */
+    private static XMLReader strictXMLReader(final XMLReader reader) {
+        reader.setErrorHandler(STRICT_REPORTER);
+        return reader;
     }
 
     /** Runs the action and silently swallows any thrown exception; used to apply best-effort permissive-side flags that may not be supported. */
@@ -631,6 +799,16 @@ final class AttackTestSupport {
         } catch (final Throwable e) {
             // Ignore
         }
+    }
+
+    private static String templatesCompileAndTransform(final Source xslt) throws TransformerException {
+        final StringWriter sink = new StringWriter();
+        final Templates templates = strictTemplates(XmlFactories.newTransformerFactory(), xslt);
+        // Xalan returns `null` if the template fails
+        if (templates != null) {
+            strictTransformer(templates).transform(streamSource("<root/>"), new StreamResult(sink));
+        }
+        return sink.toString();
     }
 
     /** XML body wrapping the supplied text in a benign {@code <root>/<child>} element pair, validated by {@link #BENIGN_SCHEMA}. */

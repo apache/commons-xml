@@ -48,7 +48,7 @@ import org.xml.sax.XMLReader;
  *         JDK 8's secure values; this call pins them to the JDK 25 secure values (entity-expansion limit and {@code maxOccurs} node limit, the only two its
  *         API exposes setters for).</li>
  *     <li>
- *         <p><strong>{@code HardeningXxx} wrappers + {@link DenyAllResolver}</strong>: required. Xerces does not implement the JAXP 1.5
+ *         <p><strong>{@code HardeningXxx} wrappers + {@link Resolvers.DenyAll}</strong>: required. Xerces does not implement the JAXP 1.5
  *         {@code ACCESS_EXTERNAL_*} properties, so an explicit resolver installed on every parser/validator is the best way to block external
  *         entity, DTD and schema fetching, without disabling those features altogether. The wrappers exist for two reasons:</p>
  *         <ol>
@@ -91,7 +91,7 @@ final class XercesProvider {
         } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
             throw new HardeningException("Failed to read Xerces security manager from Validator", e);
         }
-        validator.setResourceResolver(DenyAllResolver.LS_RESOURCE);
+        validator.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
         return validator;
     }
 
@@ -101,7 +101,7 @@ final class XercesProvider {
         } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
             throw new HardeningException("Failed to read Xerces security manager from ValidatorHandler", e);
         }
-        handler.setResourceResolver(DenyAllResolver.LS_RESOURCE);
+        handler.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
         return handler;
     }
 
@@ -131,7 +131,7 @@ final class XercesProvider {
         Limits.applyToXerces(securityManager);
         factory.setAttribute(XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
         // Required: Xerces does not honour JAXP 1.5 ACCESS_EXTERNAL_*; the wrapper installs a deny-all resolver on every DocumentBuilder.
-        return new HardeningDocumentBuilderFactory(factory, DenyAllResolver.ENTITY2);
+        return new HardeningDocumentBuilderFactory(factory, Resolvers.DenyAll.ENTITY2);
     }
 
     static SAXParserFactory configure(final SAXParserFactory factory) {
@@ -155,7 +155,7 @@ final class XercesProvider {
             throw new HardeningException("Failed to read Xerces security manager from XMLReader", e);
         }
         // Required: Xerces does not honour JAXP 1.5 ACCESS_EXTERNAL_*; the deny-all resolver is the only block.
-        reader.setEntityResolver(DenyAllResolver.ENTITY2);
+        reader.setEntityResolver(Resolvers.DenyAll.ENTITY2);
         return reader;
     }
 
@@ -169,7 +169,7 @@ final class XercesProvider {
             throw new HardeningException("Failed to read Xerces security manager from SchemaFactory", e);
         }
         // Required: Xerces ignores ACCESS_EXTERNAL_*; the deny-all resolver blocks xs:import/include/redefine fetches.
-        factory.setResourceResolver(DenyAllResolver.LS_RESOURCE);
+        factory.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
         // Required: routes every newSchema(Source[]) parse through an XmlFactories-hardened reader, and re-installs limits + resolver on each Validator and
         // ValidatorHandler since Xerces' Schema does not propagate factory state through.
         return new HardeningSchemaFactory(factory, XercesProvider::hardenValidator, XercesProvider::hardenValidatorHandler);

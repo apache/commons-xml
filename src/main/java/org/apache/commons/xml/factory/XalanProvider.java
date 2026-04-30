@@ -33,7 +33,7 @@ import javax.xml.xpath.XPathFactory;
  * <ul>
  *     <li><strong>FSP</strong> ({@link XMLConstants#FEATURE_SECURE_PROCESSING}, set to {@code true}): enables Xalan's secure-processing mode, which disables
  *         reflection-based extension functions. Required.</li>
- *     <li><strong>{@link DenyAllResolver#URI}</strong>: required. Xalan does not implement the JAXP 1.5 {@code ACCESS_EXTERNAL_*} attributes; a deny-all
+ *     <li><strong>{@link Resolvers.DenyAll#URI}</strong>: required. Xalan does not implement the JAXP 1.5 {@code ACCESS_EXTERNAL_*} attributes; a deny-all
  *         {@link javax.xml.transform.URIResolver} blocks {@code xsl:include}, {@code xsl:import}, {@code xsl:source-document} during stylesheet compilation
  *         and {@code document()}, {@code unparsed-text()}, {@code collection()} at runtime.</li>
  *     <li><strong>{@link HardeningTransformerFactory} + {@link HardeningTemplates} + {@link HardeningTransformer}</strong>: required. Xalan's source-document
@@ -55,7 +55,7 @@ final class XalanProvider {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Required: Xalan does not honour JAXP 1.5 ACCESS_EXTERNAL_*; the deny-all URIResolver blocks:
         // xsl:import/xsl:include at compile time and document()/unparsed-text() at runtime.
-        factory.setURIResolver(DenyAllResolver.URI);
+        factory.setURIResolver(Resolvers.DenyAll.URI);
         // Required: Xalan's internal SAX reader is sourced from SAXParserFactory.newInstance() and only carries FSP.
         // We replace it with our hardened factory
         return new HardeningTransformerFactory((SAXTransformerFactory) factory);

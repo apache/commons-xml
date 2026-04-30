@@ -81,8 +81,8 @@ class ExternalDtdTest {
 
     @Test
     @Tag("stax")
-    void hardenedStaxBlocks() {
-        AttackTestSupport.assertStaxBlocks(xmlPayload());
+    void hardenedStaxDoesNotLeak() {
+        AttackTestSupport.assertStaxDoesNotLeak(xmlPayload());
     }
 
     @Test

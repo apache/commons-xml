@@ -34,8 +34,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.events.XMLEvent;
 import javax.xml.transform.ErrorListener;
 import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
@@ -440,6 +442,15 @@ final class AttackTestSupport {
     }
 
     /**
+     * Asserts a hardened Schema compilation succeeds.
+     *
+     * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; positive control for DOCTYPE-only payloads.</p>
+     */
+    static void assertSchemaCompiles(final Source xsd) {
+        assertParseSucceeds(() -> strictSchema(XmlFactories.newSchemaFactory(), xsd), "Schema compile");
+    }
+
+    /**
      * Asserts a hardened Schema compilation completes without throwing.
      *
      * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; use this when the hardening contract guarantees the compile
@@ -462,6 +473,28 @@ final class AttackTestSupport {
     }
 
     /**
+     * Asserts a hardened StAX parse completes without throwing and without leaked content.
+     *
+     * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; both flavours are exercised. Use this when the
+     * hardening guarantee is "the parse succeeds but never resolves the external resource", e.g. when the JDK's {@code ignore-external-dtd} property silently
+     * skips the external subset.</p>
+     */
+    static void assertStaxDoesNotLeak(final String payload) {
+        assertNoLeakStrict(() -> captureStaxStreamText(XmlFactories.newXMLInputFactory(), payload), "StAX stream");
+        assertNoLeakStrict(() -> captureStaxEventText(XmlFactories.newXMLInputFactory(), payload), "StAX event");
+    }
+
+    /**
+     * Asserts a hardened StAX parse succeeds.
+     *
+     * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; positive control for DOCTYPE-only payloads.</p>
+     */
+    static void assertStaxParses(final String payload) {
+        assertParseSucceeds(() -> consumeStreamReader(XmlFactories.newXMLInputFactory(), payload), "StAX stream");
+        assertParseSucceeds(() -> consumeEventReader(XmlFactories.newXMLInputFactory(), payload), "StAX event");
+    }
+
+    /**
      * Asserts a hardened Templates compile-and-transform throws.
      *
      * <p>{@link TransformerFactory#newTemplates(Source)} via {@link XmlFactories#newTransformerFactory()} followed by transform; either step throwing
@@ -479,13 +512,13 @@ final class AttackTestSupport {
     }
 
     /**
-     * Asserts a hardened Templates compile-and-transform either throws or completes without leaked content.
+     * Asserts a hardened Templates compile-and-transform succeeds.
      *
-     * <p>{@link TransformerFactory#newTemplates(Source)} via {@link XmlFactories#newTransformerFactory()} followed by transform; Saxon's TrAX path may swallow
-     * the entity-expansion error and produce empty output.</p>
+     * <p>{@link TransformerFactory#newTemplates(Source)} via {@link XmlFactories#newTransformerFactory()} followed by transform; positive control for
+     * DOCTYPE-only payloads.</p>
      */
-    static void assertTemplatesBlocksOrDoesNotLeak(final Source xslt) {
-        assertNoLeakOrThrows(() -> templatesCompileAndTransform(xslt), "Templates", TransformerException.class);
+    static void assertTemplatesCompiles(final Source xslt) {
+        assertParseSucceeds(() -> templatesCompileAndTransform(xslt), "Templates compile");
     }
 
     /**
@@ -511,16 +544,6 @@ final class AttackTestSupport {
     }
 
     /**
-     * Asserts a hardened identity Transformer either throws or completes without leaked content.
-     *
-     * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} via {@link XmlFactories#newTransformerFactory()}; Saxon's TrAX path may swallow
-     * internal errors and produce empty output.</p>
-     */
-    static void assertTransformerBlocksOrDoesNotLeak(final String payload) {
-        assertNoLeakOrThrows(() -> identityTransformAndCapture(payload), "Transformer", TransformerException.class);
-    }
-
-    /**
      * Asserts a hardened identity Transformer completes without throwing and without leaked content.
      *
      * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} via {@link XmlFactories#newTransformerFactory()}; use this when the hardening
@@ -528,6 +551,16 @@ final class AttackTestSupport {
      */
     static void assertTransformerDoesNotLeak(final String payload) {
         assertNoLeakStrict(() -> identityTransformAndCapture(payload), "Transformer");
+    }
+
+    /**
+     * Asserts a hardened identity Transformer succeeds.
+     *
+     * <p>{@link Transformer#transform(Source, javax.xml.transform.Result)} on the identity transformer from {@link XmlFactories#newTransformerFactory()};
+     * positive control for DOCTYPE-only payloads.</p>
+     */
+    static void assertTransformerTransforms(final String payload) {
+        assertParseSucceeds(() -> identityTransformAndCapture(payload), "Transformer");
     }
 
     /**
@@ -549,6 +582,18 @@ final class AttackTestSupport {
      * hardening contract guarantees the validate succeeds but never resolves the external resource.</p>
      */
     static void assertValidatorDoesNotLeak(final String xml) {
+        assertParseSucceeds(
+                () -> strictValidator(strictSchema(XmlFactories.newSchemaFactory(), streamSource(BENIGN_SCHEMA))).validate(streamSource(xml)),
+                "Validator");
+    }
+
+    /**
+     * Asserts a hardened Validator validation succeeds.
+     *
+     * <p>{@link Validator#validate(Source)} on a validator from {@link #BENIGN_SCHEMA} compiled via {@link XmlFactories#newSchemaFactory()}; positive control
+     * for DOCTYPE-only payloads.</p>
+     */
+    static void assertValidatorValidates(final String xml) {
         assertParseSucceeds(
                 () -> strictValidator(strictSchema(XmlFactories.newSchemaFactory(), streamSource(BENIGN_SCHEMA))).validate(streamSource(xml)),
                 "Validator");
@@ -603,6 +648,40 @@ final class AttackTestSupport {
             }
         });
         strictXMLReader(reader).parse(inputSource(payload));
+        return text.toString();
+    }
+
+    /** Parses the payload through a {@link XMLEventReader} and returns the accumulated character data, used by the StAX-based {@code DoesNotLeak} helper. */
+    private static String captureStaxEventText(final XMLInputFactory factory, final String payload) throws Exception {
+        final StringBuilder text = new StringBuilder();
+        final XMLEventReader events = factory.createXMLEventReader(new StringReader(payload));
+        try {
+            while (events.hasNext()) {
+                final XMLEvent event = events.nextEvent();
+                if (event.isCharacters()) {
+                    text.append(event.asCharacters().getData());
+                }
+            }
+        } finally {
+            events.close();
+        }
+        return text.toString();
+    }
+
+    /** Parses the payload through a {@link XMLStreamReader} and returns the accumulated character data, used by the StAX-based {@code DoesNotLeak} helper. */
+    private static String captureStaxStreamText(final XMLInputFactory factory, final String payload) throws Exception {
+        final StringBuilder text = new StringBuilder();
+        final XMLStreamReader stream = factory.createXMLStreamReader(new StringReader(payload));
+        try {
+            while (stream.hasNext()) {
+                final int event = stream.next();
+                if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) {
+                    text.append(stream.getText());
+                }
+            }
+        } finally {
+            stream.close();
+        }
         return text.toString();
     }
 

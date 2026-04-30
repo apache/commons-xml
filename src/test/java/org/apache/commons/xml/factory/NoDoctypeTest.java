@@ -16,45 +16,35 @@
  */
 package org.apache.commons.xml.factory;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Checks that a document carrying a {@code <!DOCTYPE root SYSTEM "...">} declaration but no body references parses successfully through the hardened
- * factories.
+ * Checks that a plain document without a {@code DOCTYPE} declaration parses cleanly through every hardened JAXP surface.
  *
- * <p>The SYSTEM identifier points at a deliberately bogus URL ({@code http://invalid.example.invalid/...}) under the IANA-reserved {@code .invalid} TLD: any
- * attempt to fetch it would raise a network error long before the test could complete, so a passing test proves the parser did not even try. The hardening
- * contract being verified is "skip the external DTD silently when nothing in the body needs it" rather than "reject every DOCTYPE".</p>
+ * <p>This is the realistic 99% case for hardened input; the hardening contract being verified is "documents without a DOCTYPE parse cleanly through every
+ * JAXP surface" so accidental tightening (e.g. a resolver that refuses the synthetic-external-subset hook) is caught.</p>
  */
-class DoctypeOnlyTest {
-
-    private static final String BOGUS_DTD_URL = "http://invalid.example.invalid/bogus.dtd";
+class NoDoctypeTest {
 
     private static String payload() {
         return "<?xml version=\"1.0\"?>\n"
-                + "<!DOCTYPE root SYSTEM \"" + BOGUS_DTD_URL + "\">\n"
                 + AttackTestSupport.xmlBody("hello") + "\n";
     }
 
     private static String xsdPayload() {
         return "<?xml version=\"1.0\"?>\n"
-                + "<!DOCTYPE xs:schema SYSTEM \"" + BOGUS_DTD_URL + "\">\n"
                 + AttackTestSupport.xsdBody("hello") + "\n";
     }
 
     private static String xsltPayload() {
         return "<?xml version=\"1.0\"?>\n"
-                + "<!DOCTYPE xsl:stylesheet SYSTEM \"" + BOGUS_DTD_URL + "\">\n"
                 + AttackTestSupport.xsltBody("hello") + "\n";
     }
 
     @Test
     @Tag("dom")
     void hardenedDomParses() {
-        Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
-                "Skipped: platform DOM does not resolve user-defined entities");
         AttackTestSupport.assertDomParses(payload());
     }
 

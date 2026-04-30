@@ -1,0 +1,146 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Piotr P. Karwasz <piotr@github.copernik.eu>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package eu.copernik.xml.factory;
+
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Checks whether parsers can pull in an external general entity declared inline in the internal subset.
+ *
+ * <p>The wrapper declares {@code <!ENTITY xxe SYSTEM "file:.../referenced.txt">} and uses {@code &xxe;} in the body. The general entity expands to the
+ * content of {@code src/test/resources/leaked/referenced.txt} when the external reference is resolved. A hardened parser refuses the fetch, {@code &xxe;} is
+ * undefined, and the parse throws; an unconfigured parser fetches the file, the entity resolves, and the parse succeeds.</p>
+ *
+ * <p>Each parser type is exercised twice as a pair (unconfigured factory, expected to parse; hardened factory, expected to throw):</p>
+ *
+ * <ul>
+ *   <li>DOM, SAX and StAX direct XML parsing.</li>
+ *   <li>{@code SchemaFactory.newSchema(Source)} compilation of an XSD whose source has the entity-bearing DOCTYPE.</li>
+ *   <li>{@link javax.xml.validation.Validator#validate(javax.xml.transform.Source)} of an instance whose source has the entity-bearing DOCTYPE.</li>
+ *   <li>Identity {@code Transformer} reading the input XML.</li>
+ *   <li>{@code TransformerFactory.newTransformer(Source)} compilation of a stylesheet whose source has the entity-bearing DOCTYPE.</li>
+ * </ul>
+ */
+class ExternalGeneralEntityTest {
+
+    private static final String INSERTION = "&xxe;";
+
+    private static String withDoctype(final String rootQName, final String body) {
+        return "<?xml version=\"1.0\"?>\n"
+                + "<!DOCTYPE " + rootQName + " [\n"
+                + "  <!ENTITY xxe SYSTEM \"" + AttackTestSupport.resourceUrl("referenced.txt") + "\">\n"
+                + "]>\n"
+                + body + "\n";
+    }
+
+    private static String xmlPayload() {
+        return withDoctype("root", AttackTestSupport.xmlBody(INSERTION));
+    }
+
+    private static String xsdPayload() {
+        return withDoctype("xs:schema", AttackTestSupport.xsdBody(INSERTION));
+    }
+
+    private static String xsltPayload() {
+        return withDoctype("xsl:stylesheet", AttackTestSupport.xsltBody(INSERTION));
+    }
+
+    @Test
+    @Tag("dom")
+    void hardenedDomBlocks() {
+        Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
+                "Skipped: platform DOM does not resolve user-defined entities");
+        AttackTestSupport.assertDomBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("sax")
+    void hardenedSaxBlocks() {
+        AttackTestSupport.assertSaxBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("schema")
+    void hardenedSchemaBlocks() {
+        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.streamSource(xsdPayload()));
+    }
+
+    @Test
+    @Tag("stax")
+    void hardenedStaxBlocks() {
+        AttackTestSupport.assertStaxBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("trax")
+    void hardenedTemplatesBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.streamSource(xsltPayload()));
+    }
+
+    @Test
+    @Tag("trax")
+    void hardenedTransformerBlocks() {
+        AttackTestSupport.assertTransformerBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("schema")
+    void hardenedValidatorBlocks() {
+        AttackTestSupport.assertValidatorBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("sax")
+    void hardenedXmlReaderBlocks() {
+        AttackTestSupport.assertXmlReaderBlocks(xmlPayload());
+    }
+
+    @Test
+    @Tag("dom")
+    void unconfiguredDomParses() {
+        Assumptions.assumeTrue(AttackTestSupport.DOM_RESOLVES_INTERNAL_ENTITIES,
+                "Skipped: platform DOM does not resolve user-defined entities");
+        AttackTestSupport.assertPermissiveDomParses(xmlPayload());
+    }
+
+    @Test
+    @Tag("sax")
+    void unconfiguredSaxParses() {
+        AttackTestSupport.assertPermissiveSaxParses(xmlPayload());
+    }
+
+    @Test
+    @Tag("schema")
+    void unconfiguredSchemaCompiles() {
+        AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
+    }
+
+    @Test
+    @Tag("stax")
+    void unconfiguredStaxParses() {
+        AttackTestSupport.assertPermissiveStaxParses(xmlPayload());
+    }
+
+    @Test
+    @Tag("trax")
+    void unconfiguredTemplatesCompiles() {
+        AttackTestSupport.assertPermissiveTemplatesCompiles(xsltPayload());
+    }
+
+    @Test
+    @Tag("trax")
+    void unconfiguredTransformerTransforms() {
+        AttackTestSupport.assertPermissiveTransformerTransforms(xmlPayload());
+    }
+
+    @Test
+    @Tag("schema")
+    void unconfiguredValidatorValidates() {
+        AttackTestSupport.assertPermissiveValidatorValidates(xmlPayload());
+    }
+}

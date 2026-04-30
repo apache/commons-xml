@@ -1,0 +1,108 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Piotr P. Karwasz <piotr@github.copernik.eu>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package eu.copernik.xml.factory;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
+import javax.xml.validation.ValidatorHandler;
+import javax.xml.xpath.XPathFactory;
+
+import org.xml.sax.XMLReader;
+
+/**
+ * Setter helpers shared by the bundled hardening providers.
+ *
+ * <p>Each overload wraps a single JAXP setter (feature, attribute or property) in a try/catch that translates any thrown exception into a
+ * {@link HardeningException} whose message names the offending feature, attribute or property and the concrete factory class.</p>
+ */
+final class JaxpSetters {
+
+    /** Action that may throw any exception; used to share a single try/catch around every JAXP setter. */
+    @FunctionalInterface
+    private interface ThrowingAction {
+        void run() throws Exception;
+    }
+
+    private static void apply(final Object factory, final String kind, final String name, final ThrowingAction action) {
+        try {
+            action.run();
+        } catch (final Exception e) {
+            throw new HardeningException("Failed to set " + kind + " '" + name + "' on " + factory.getClass().getName(), e);
+        }
+    }
+
+    static void setAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
+    }
+
+    static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
+        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
+    }
+
+    static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+    }
+
+    static void setFeature(final SAXParserFactory factory, final String feature, final boolean value) {
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+    }
+
+    static void setFeature(final TransformerFactory factory, final String feature, final boolean value) {
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+    }
+
+    static void setFeature(final XPathFactory factory, final String feature, final boolean value) {
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+    }
+
+    static void setFeature(final SchemaFactory factory, final String feature, final boolean value) {
+        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+    }
+
+    static void setFeature(final Validator validator, final String feature, final boolean value) {
+        apply(validator, "feature", feature, () -> validator.setFeature(feature, value));
+    }
+
+    static void setFeature(final ValidatorHandler handler, final String feature, final boolean value) {
+        apply(handler, "feature", feature, () -> handler.setFeature(feature, value));
+    }
+
+    static void setFeature(final XMLReader reader, final String feature, final boolean value) {
+        apply(reader, "feature", feature, () -> reader.setFeature(feature, value));
+    }
+
+    static void setProperty(final XMLInputFactory factory, final String property, final Object value) {
+        apply(factory, "property", property, () -> factory.setProperty(property, value));
+    }
+
+    static void setProperty(final SAXParser parser, final String property, final Object value) {
+        apply(parser, "property", property, () -> parser.setProperty(property, value));
+    }
+
+    static void setProperty(final XMLReader reader, final String property, final Object value) {
+        apply(reader, "property", property, () -> reader.setProperty(property, value));
+    }
+
+    static void setProperty(final SchemaFactory factory, final String property, final Object value) {
+        apply(factory, "property", property, () -> factory.setProperty(property, value));
+    }
+
+    static void setProperty(final Validator validator, final String property, final Object value) {
+        apply(validator, "property", property, () -> validator.setProperty(property, value));
+    }
+
+    static void setProperty(final ValidatorHandler handler, final String property, final Object value) {
+        apply(handler, "property", property, () -> handler.setProperty(property, value));
+    }
+
+    private JaxpSetters() {
+    }
+}

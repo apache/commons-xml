@@ -1,27 +1,9 @@
-<!---
- Licensed to the Apache Software Foundation (ASF) under one or more
- contributor license agreements.  See the NOTICE file distributed with
- this work for additional information regarding copyright ownership.
- The ASF licenses this file to You under the Apache License, Version 2.0
- (the "License"); you may not use this file except in compliance with
- the License.  You may obtain a copy of the License at
+<!--
+  ~ SPDX-FileCopyrightText: 2026 Piotr P. Karwasz <piotr@github.copernik.eu>
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
 
-      https://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
--->
-
-# Apache Commons XML Factory
-
-> [!WARNING]
-> This is a draft of a new [Apache Commons](https://commons.apache.org) project base on
-> [this proposal](https://lists.apache.org/thread/b2tjc15vjkgsrxxkc8phlnt6801hx4xz).
-> 
-> It is **not** an official Apache Commons library yet.
+# Copernik XML Factory
 
 Secure-by-default JAXP factory creation for Java.
 A single method call returns a hardened JAXP factory that can be used to **safely** parse XML files.
@@ -51,8 +33,8 @@ Add the library to your build:
 
 ```xml
 <dependency>
-  <groupId>org.apache.commons</groupId>
-  <artifactId>commons-xml-factory</artifactId>
+  <groupId>eu.copernik</groupId>
+  <artifactId>copernik-xml-factory</artifactId>
   <version>0.1.0</version>
 </dependency>
 ```
@@ -80,7 +62,7 @@ requires a code change to this library.
 
 ```java
 import org.w3c.dom.Document;
-import org.apache.commons.xml.factory.XmlFactories;
+import eu.copernik.xml.factory.XmlFactories;
 
 Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputStream);
 ```
@@ -88,7 +70,7 @@ Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().par
 **SAX parsing** via `SAXParserFactory`:
 
 ```java
-import org.apache.commons.xml.factory.XmlFactories;
+import eu.copernik.xml.factory.XmlFactories;
 
 XmlFactories.newSAXParserFactory().newSAXParser().parse(inputStream, myDefaultHandler);
 ```
@@ -97,7 +79,7 @@ XmlFactories.newSAXParserFactory().newSAXParser().parse(inputStream, myDefaultHa
 
 ```java
 import javax.xml.stream.XMLStreamReader;
-import org.apache.commons.xml.factory.XmlFactories;
+import eu.copernik.xml.factory.XmlFactories;
 
 XMLStreamReader reader = XmlFactories.newXMLInputFactory().createXMLStreamReader(inputStream);
 ```
@@ -106,9 +88,7 @@ XMLStreamReader reader = XmlFactories.newXMLInputFactory().createXMLStreamReader
 
 ```java
 import javax.xml.transform.stream.StreamSource;
-import javax.xml.transform.stream.StreamResult;
-import org.apache.commons.xml.factory.XmlFactories;
-
+import eu.copernik.xml.factory.XmlFactories;
 XmlFactories.newTransformerFactory()
         .newTransformer(new StreamSource(stylesheet))
         .transform(new StreamSource(inputStream), new StreamResult(outputStream));
@@ -119,7 +99,7 @@ XmlFactories.newTransformerFactory()
 ```java
 import javax.xml.xpath.XPathConstants;
 import org.w3c.dom.NodeList;
-import org.apache.commons.xml.factory.XmlFactories;
+import eu.copernik.xml.factory.XmlFactories;
 
 NodeList hits = (NodeList) XmlFactories.newXPathFactory()
         .newXPath()
@@ -130,7 +110,7 @@ NodeList hits = (NodeList) XmlFactories.newXPathFactory()
 
 ```java
 import javax.xml.transform.stream.StreamSource;
-import org.apache.commons.xml.factory.XmlFactories;
+import eu.copernik.xml.factory.XmlFactories;
 
 XmlFactories.newSchemaFactory()
         .newSchema(new StreamSource(xsdStream))
@@ -183,4 +163,4 @@ From a command shell, run `mvn` without arguments to invoke the default Maven go
 
 ## Licensing
 
-Licensed under the Apache License, Version 2.0. See `LICENSE.txt` and `NOTICE.txt`.
+Licensed under the Apache License, Version 2.0. See `LICENSE`.

@@ -106,7 +106,7 @@
     <central.publishing.version>0.10.0</central.publishing.version>
 
     <!-- Flatten Maven plugin: produces a consumer POM at deploy time. -->
-    <flatten-maven-plugin.version>1.7.0</flatten-maven-plugin.version>
+    <flatten-maven-plugin.version>1.7.3</flatten-maven-plugin.version>
   </properties>
 
   <dependencies>

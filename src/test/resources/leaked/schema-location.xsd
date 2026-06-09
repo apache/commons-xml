@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <!-- Default attribute value; a schema-validating parser inlines it into the DOM only if it fetched this external schema. -->
+      <xs:attribute name="leak" type="xs:string" default="All your base are belong to us"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

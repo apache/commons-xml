@@ -104,6 +104,8 @@
 
     <!-- Sonatype Central Publishing -->
     <central.publishing.version>0.10.0</central.publishing.version>
+    <!-- We use Central and the `deploy` goal auto-detection does not currently work with it -->
+    <cyclonedx.skipNotDeployed>false</cyclonedx.skipNotDeployed>
 
     <!-- Flatten Maven plugin: produces a consumer POM at deploy time. -->
     <flatten-maven-plugin.version>1.7.3</flatten-maven-plugin.version>
@@ -294,6 +296,41 @@
                 <exclude>net.sf.saxon:Saxon-HE</exclude>
               </classpathDependencyExcludes>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Do not publish a test-jar: the test classes are not part of the consumer contract. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!--
+        commons-parent's create-source-jar execution attaches both the main sources (jar-no-fork) and the test
+        sources (test-jar-no-fork) in one execution. Disable it and re-bind a main-sources-only execution, so the
+        published artifact keeps the Central-required sources jar but drops the test-sources jar.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>create-source-jar</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>create-main-source-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

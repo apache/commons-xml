@@ -43,6 +43,10 @@ Every method on `XmlFactories` returns a fresh, hardened factory. Pick the one t
 other configuration is required. On hardened factories any attempt to resolve an external resource (DTD, entity, schema,
 stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying implementation allows it.
 
+Each method is documented in the
+[`XmlFactories` Javadoc](https://javadoc.io/doc/eu.copernik/copernik-xml-factory/latest/eu/copernik/xml/factory/XmlFactories.html),
+hosted on javadoc.io.
+
 ### Supported implementations
 
 The library recognises:

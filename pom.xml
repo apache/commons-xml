@@ -13,7 +13,7 @@
   </parent>
   <groupId>eu.copernik</groupId>
   <artifactId>copernik-xml-factory</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0-SNAPSHOT</version>
   <name>Copernik XML Factory</name>
   <url>https://github.com/copernik-eu/copernik-xml-factory/</url>
   <inceptionYear>2026</inceptionYear>

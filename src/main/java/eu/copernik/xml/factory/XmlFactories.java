@@ -222,7 +222,7 @@ public final class XmlFactories {
      *   <li>{@code xsi:schemaLocation} / {@code xsi:noNamespaceSchemaLocation} hints in instance documents are not resolved during validation.</li>
      * </ul>
      *
-     * <p></p>The same guarantees apply to {@link javax.xml.validation.Validator} and {@link javax.xml.validation.ValidatorHandler} instances produced from the
+     * <p>The same guarantees apply to {@link javax.xml.validation.Validator} and {@link javax.xml.validation.ValidatorHandler} instances produced from the
      * resulting {@link javax.xml.validation.Schema}.</p>
      *
      * @return a hardened factory.

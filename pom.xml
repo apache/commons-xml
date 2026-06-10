@@ -107,6 +107,12 @@
     <!-- We use Central and the `deploy` goal auto-detection does not currently work with it -->
     <cyclonedx.skipNotDeployed>false</cyclonedx.skipNotDeployed>
 
+    <!--
+      Skip the source-release assembly inherited from the release profile: it expects the ASF
+      src/assembly/src.xml descriptor, and we publish to Central rather than cutting an ASF release.
+    -->
+    <assembly.skipAssembly>true</assembly.skipAssembly>
+
     <!-- Flatten Maven plugin: produces a consumer POM at deploy time. -->
     <flatten-maven-plugin.version>1.7.3</flatten-maven-plugin.version>
   </properties>

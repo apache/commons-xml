@@ -87,6 +87,11 @@
     <!-- OSGi bundle metadata: override commons-parent's org.apache.commons.* defaults. -->
     <commons.osgi.symbolicName>eu.copernik.xml.factory</commons.osgi.symbolicName>
     <commons.osgi.export>eu.copernik.xml.factory.*;version=${project.version};-noimport:=true</commons.osgi.export>
+    <commons.osgi.import>
+      net.sf.saxon.*;resolution:=optional,
+      org.apache.xerces.*;resolution:=optional,
+      *
+    </commons.osgi.import>
     <project.build.outputTimestamp>2026-04-22T00:00:00Z</project.build.outputTimestamp>
 
     <!-- No JIRA: tracked in GitHub Issues. -->
@@ -341,6 +346,27 @@
         </executions>
       </plugin>
 
+      <!-- jdeps makes Saxon.HE a hard requires; flip it to static (optional). The trailing * keeps the rest. -->
+      <plugin>
+        <groupId>org.moditect</groupId>
+        <artifactId>moditect-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-module-infos</id>
+            <configuration>
+              <module>
+                <moduleInfo>
+                  <requires>
+                    static Saxon.HE;
+                    *;
+                  </requires>
+                </moduleInfo>
+              </module>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <!-- Publish to the new Sonatype Central API. -->
       <plugin>
         <groupId>org.sonatype.central</groupId>
@@ -392,4 +418,61 @@
 
     </plugins>
   </build>
+
+  <profiles>
+    <!--
+      Regression guard for the generated OSGi and JPMS descriptors.
+      The JPMS test requires JDK 9+
+    -->
+    <profile>
+      <id>java11-tests</id>
+      <activation>
+        <jdk>[11,)</jdk>
+      </activation>
+      <build>
+        <plugins>
+          <!-- Compile the src/test/java11 source root at release 11; the default test sources stay at release 8. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>testCompile-java11</id>
+                <phase>test-compile</phase>
+                <goals>
+                  <goal>testCompile</goal>
+                </goals>
+                <configuration>
+                  <release>11</release>
+                  <compileSourceRoots>
+                    <compileSourceRoot>${project.basedir}/src/test/java11</compileSourceRoot>
+                  </compileSourceRoots>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!-- Run DescriptorIT against the packaged jar; no OSGi framework or separate JPMS module needed. -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>verify-descriptors</id>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+                <configuration>
+                  <systemPropertyVariables>
+                    <buildJar>${project.build.directory}/${project.build.finalName}.jar</buildJar>
+                  </systemPropertyVariables>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

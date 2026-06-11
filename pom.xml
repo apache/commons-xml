@@ -13,7 +13,7 @@
   </parent>
   <groupId>eu.copernik</groupId>
   <artifactId>copernik-xml-factory</artifactId>
-  <version>0.2.0-SNAPSHOT</version>
+  <version>0.1.1</version>
   <name>Copernik XML Factory</name>
   <url>https://github.com/copernik-eu/copernik-xml-factory/</url>
   <inceptionYear>2026</inceptionYear>
@@ -71,13 +71,12 @@
 
   <properties>
     <!-- Release-related properties -->
-    <commons.release.version>0.1.0</commons.release.version>
+    <commons.release.version>0.1.1</commons.release.version>
     <commons.release.desc>(Java 8+)</commons.release.desc>
     <commons.rc.version>RC1</commons.rc.version>
-    <!-- Not relevant for first release: reenable after 0.1.0 and reenable japicmp
-    <commons.bc.version>0.1.0</commons.bc.version> -->
-    <japicmp.skip>true</japicmp.skip>
-    <commons.release.next>0.1.1</commons.release.next>
+    <!-- japicmp baseline: compare the API against the previous release. -->
+    <commons.bc.version>0.1.0</commons.bc.version>
+    <commons.release.next>0.1.2</commons.release.next>
     <commons.componentid>copernik-xml-factory</commons.componentid>
     <commons.packageId>xml.factory</commons.packageId>
     <commons.module.name>eu.copernik.xml.factory</commons.module.name>

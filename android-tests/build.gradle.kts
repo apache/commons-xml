@@ -10,7 +10,7 @@ plugins {
     id("de.mannodermaus.android-junit5") version "1.14.0.0"
 }
 
-val libraryVersion = "0.2.0-SNAPSHOT"
+val libraryVersion = "0.1.1"
 val libraryJar = rootProject.file("../target/copernik-xml-factory-${libraryVersion}.jar")
 
 android {

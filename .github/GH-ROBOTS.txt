@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-android.useAndroidX=true
-kotlin.code.style=official
+# Keeps on creating FUD PRs in test code
+# Does not follow Apache disclosure policies
+User-agent: JLLeitschuh/security-research
+Disallow: *

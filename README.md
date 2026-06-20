@@ -1,9 +1,26 @@
 <!--
-  ~ SPDX-FileCopyrightText: 2026 Piotr P. Karwasz <piotr@github.copernik.eu>
-  ~ SPDX-License-Identifier: Apache-2.0
-  -->
+Licensed to the Apache Software Foundation (ASF) under one or more
+contributor license agreements.  See the NOTICE file distributed with
+this work for additional information regarding copyright ownership.
+The ASF licenses this file to You under the Apache License, Version 2.0
+(the "License"); you may not use this file except in compliance with
+the License.  You may obtain a copy of the License at
 
-# Copernik XML Factory
+     https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+# Apache Commons XML
+
+> [!WARNING]
+> **Sandbox component.** Apache Commons XML is part of the
+> [Apache Commons Sandbox](https://commons.apache.org/sandbox/). It is a work in progress, has not been formally
+> released, and its API, coordinates, and behaviour may change without notice. Do not rely on it in production.
 
 Secure-by-default JAXP factory creation for Java.
 A single method call returns a hardened JAXP factory that can be used to **safely** parse XML files.
@@ -33,9 +50,9 @@ Add the library to your build:
 
 ```xml
 <dependency>
-  <groupId>eu.copernik</groupId>
-  <artifactId>copernik-xml-factory</artifactId>
-  <version>0.1.0</version>
+  <groupId>org.apache.commons</groupId>
+  <artifactId>commons-xml</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -44,7 +61,7 @@ other configuration is required. On hardened factories any attempt to resolve an
 stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying implementation allows it.
 
 Each method is documented in the
-[`XmlFactories` Javadoc](https://javadoc.io/doc/eu.copernik/copernik-xml-factory/latest/eu/copernik/xml/factory/XmlFactories.html),
+[`XmlFactories` Javadoc](https://javadoc.io/doc/org.apache.commons/commons-xml/latest/org/apache/commons/xml/XmlFactories.html),
 hosted on javadoc.io.
 
 ### Supported implementations
@@ -66,7 +83,7 @@ requires a code change to this library.
 
 ```java
 import org.w3c.dom.Document;
-import eu.copernik.xml.factory.XmlFactories;
+import org.apache.commons.xml.XmlFactories;
 
 Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().parse(inputStream);
 ```
@@ -74,7 +91,7 @@ Document doc = XmlFactories.newDocumentBuilderFactory().newDocumentBuilder().par
 **SAX parsing** via `SAXParserFactory`:
 
 ```java
-import eu.copernik.xml.factory.XmlFactories;
+import org.apache.commons.xml.XmlFactories;
 
 XmlFactories.newSAXParserFactory().newSAXParser().parse(inputStream, myDefaultHandler);
 ```
@@ -83,7 +100,7 @@ XmlFactories.newSAXParserFactory().newSAXParser().parse(inputStream, myDefaultHa
 
 ```java
 import javax.xml.stream.XMLStreamReader;
-import eu.copernik.xml.factory.XmlFactories;
+import org.apache.commons.xml.XmlFactories;
 
 XMLStreamReader reader = XmlFactories.newXMLInputFactory().createXMLStreamReader(inputStream);
 ```
@@ -92,7 +109,7 @@ XMLStreamReader reader = XmlFactories.newXMLInputFactory().createXMLStreamReader
 
 ```java
 import javax.xml.transform.stream.StreamSource;
-import eu.copernik.xml.factory.XmlFactories;
+import org.apache.commons.xml.XmlFactories;
 XmlFactories.newTransformerFactory()
         .newTransformer(new StreamSource(stylesheet))
         .transform(new StreamSource(inputStream), new StreamResult(outputStream));
@@ -103,7 +120,7 @@ XmlFactories.newTransformerFactory()
 ```java
 import javax.xml.xpath.XPathConstants;
 import org.w3c.dom.NodeList;
-import eu.copernik.xml.factory.XmlFactories;
+import org.apache.commons.xml.XmlFactories;
 
 NodeList hits = (NodeList) XmlFactories.newXPathFactory()
         .newXPath()
@@ -114,7 +131,7 @@ NodeList hits = (NodeList) XmlFactories.newXPathFactory()
 
 ```java
 import javax.xml.transform.stream.StreamSource;
-import eu.copernik.xml.factory.XmlFactories;
+import org.apache.commons.xml.XmlFactories;
 
 XmlFactories.newSchemaFactory()
         .newSchema(new StreamSource(xsdStream))

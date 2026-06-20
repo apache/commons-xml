@@ -15,20 +15,27 @@
  * limitations under the License.
  */
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+package org.apache.commons.xml;
+
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Checks whether {@code xs:redefine schemaLocation="included.xsd"} that extends a complex type from a sibling schema is resolved at compile time. The wrapper
+ * cannot compile unless the redefined type is fetched from the sibling schema.
+ */
+@Tag("schema")
+class SchemaRedefineTest {
+
+    private static final String RESOURCE = "with-redefine.xsd";
+
+    @Test
+    void hardenedSchemaBlocks() {
+        AttackTestSupport.assertSchemaBlocks(AttackTestSupport.resourceSource(RESOURCE));
+    }
+
+    @Test
+    void unconfiguredSchemaCompiles() {
+        AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.resourceSource(RESOURCE));
     }
 }
-
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.name = "commons-xml-android-tests"

@@ -13,6 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-android.useAndroidX=true
-kotlin.code.style=official
+github:
+  description: "Apache Commons XML"
+  homepage: https://commons.apache.org/sandbox/commons-xml/
+
+notifications:
+    commits:      commits@commons.apache.org
+    issues:       issues@commons.apache.org
+    pullrequests: issues@commons.apache.org
+    jira_options: link label
+    jobs:         notifications@commons.apache.org
+    # commits_bot_dependabot: dependabot@commons.apache.org
+    issues_bot_dependabot: dependabot@commons.apache.org
+    pullrequests_bot_dependabot: dependabot@commons.apache.org
+    issues_bot_codecov-commenter: notifications@commons.apache.org
+    pullrequests_bot_codecov-commenter: notifications@commons.apache.org

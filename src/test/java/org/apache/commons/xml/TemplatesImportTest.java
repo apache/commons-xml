@@ -15,20 +15,20 @@
  * limitations under the License.
  */
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+package org.apache.commons.xml;
+
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Checks whether {@code xsl:import} of a sibling stylesheet is resolved at compile time. The wrapper imports a sibling that, if fetched, contributes a
+ * template emitting the leaked marker into the transform output.
+ */
+@Tag("trax")
+class TemplatesImportTest {
+
+    @Test
+    void hardenedTemplatesBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.resourceSource("with-import.xsl"));
     }
 }
-
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.name = "commons-xml-android-tests"

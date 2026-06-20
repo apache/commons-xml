@@ -15,20 +15,20 @@
  * limitations under the License.
  */
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+package org.apache.commons.xml;
+
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Checks whether the XSLT {@code document()} function is resolved at transform time. Compilation succeeds (the function call is just XPath); the leak vector
+ * fires only when {@code Transformer.transform} is called and the function evaluates its URI argument.
+ */
+@Tag("trax")
+class TransformerDocumentTest {
+
+    @Test
+    void hardenedTransformerBlocks() {
+        AttackTestSupport.assertTemplatesBlocks(AttackTestSupport.resourceSource("with-document.xsl"));
     }
 }
-
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.name = "commons-xml-android-tests"

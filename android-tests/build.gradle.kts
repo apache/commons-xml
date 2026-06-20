@@ -22,8 +22,8 @@ plugins {
     id("de.mannodermaus.android-junit5") version "1.14.0.0"
 }
 
-val libraryVersion = "0.2.0-SNAPSHOT"
-val libraryJar = rootProject.file("../target/copernik-xml-factory-${libraryVersion}.jar")
+val libraryVersion = "0.1.0-SNAPSHOT"
+val libraryJar = rootProject.file("../target/commons-xml-${libraryVersion}.jar")
 
 android {
     namespace = "org.apache.commons.xml.androidtests"

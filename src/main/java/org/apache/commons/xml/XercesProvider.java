@@ -35,7 +35,7 @@ import org.xml.sax.XMLReader;
  * Hardening recipes for the external Apache Xerces distribution (the {@code xerces:xercesImpl} artifact).
  *
  * <p>Factory classes live in the {@code org.apache.xerces.*} package. External Xerces does not ship a {@code TransformerFactory}, {@code XMLInputFactory} or
- * {@code XPathFactory}, so this class only handles SAX and Schema factories; DOM hardening lives in {@link DocumentBuilderHardener}.</p>
+ * {@code XPathFactory}, so this class only handles SAX and Schema factories. DOM hardening lives in {@link DocumentBuilderHardener}.</p>
  *
  * <p>Hardening recipe applied to every factory below uses the same building blocks:</p>
  * <ul>
@@ -49,7 +49,7 @@ import org.xml.sax.XMLReader;
  *         {@code ACCESS_EXTERNAL_*} properties, so an explicit resolver installed on every parser/validator is the best way to block external
  *         entity, DTD and schema fetching, without disabling those features altogether. The wrappers exist for two reasons:</p>
  *         <ol>
- *             <li>{@link SAXParserFactory} carries no resolver, so it has to be set on each {@link SAXParser} produced;</li>
+ *             <li>{@link SAXParserFactory} carries no resolver, so it has to be set on each {@link SAXParser} produced.</li>
  *             <li>Xerces' {@link Schema} does not propagate the {@link SchemaFactory}'s resolver or security manager to its
  *             {@link Validator} / {@link ValidatorHandler} products, so the wrapper re-installs both on every product.</li>
  *         </ol>

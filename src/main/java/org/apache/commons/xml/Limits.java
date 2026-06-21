@@ -238,7 +238,7 @@ final class Limits {
     /**
      * Best-effort application of the processing limits to a {@link DocumentBuilderFactory}, dispatched on the implementation.
      *
-     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance; every other implementation (the stock JDK and any
+     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance. Every other implementation (the stock JDK and any
      * future attribute-based parser) takes the JDK limit attributes. Neither path throws if the implementation declines a limit.</p>
      */
     static void tryApply(final DocumentBuilderFactory factory) {

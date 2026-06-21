@@ -58,8 +58,8 @@ class ShadingFootprintTest {
      * decision, not an accident.
      */
     private static final Set<String> EXPECTED_REACHABLE = new TreeSet<>(asList(
+            PACKAGE_PREFIX + ".DelegatingDocumentBuilderFactory",
             PACKAGE_PREFIX + ".DocumentBuilderHardener",
-            PACKAGE_PREFIX + ".DocumentBuilderHardener$DelegatingDocumentBuilderFactory",
             PACKAGE_PREFIX + ".DocumentBuilderHardener$HardeningDocumentBuilderFactory",
             PACKAGE_PREFIX + ".HardeningException",
             PACKAGE_PREFIX + ".JaxpSetters",

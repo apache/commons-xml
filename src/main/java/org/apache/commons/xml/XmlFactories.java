@@ -184,15 +184,15 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link DocumentBuilderFactory}.
      *
-     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is disabled. Calling
-     * {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on the returned factory does not re-enable resolution; a parse that
-     * encounters an {@code xi:include} element fails.</p>
+     * <p><strong>Enabling XInclude:</strong> {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on its own does not make XInclude
+     * usable, because an included resource is fetched like any other external resource and is therefore blocked, failing the parse. A caller that genuinely
+     * wants XInclude must, in addition to enabling awareness, install a custom {@link org.xml.sax.EntityResolver} that permits those specific lookups.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
-        return DocumentBuilderHardener.harden(DocumentBuilderFactory.newInstance());
+        return DocumentBuilderHardener.newInstance();
     }
 
     /**

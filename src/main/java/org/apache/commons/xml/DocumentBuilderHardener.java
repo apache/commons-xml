@@ -28,6 +28,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.validation.Schema;
 
 import org.xml.sax.EntityResolver;
+import org.xml.sax.SAXException;
 
 /**
  * Capability-driven hardening for any {@link DocumentBuilderFactory} on the classpath.
@@ -47,7 +48,7 @@ import org.xml.sax.EntityResolver;
  *         {@link EntityResolver} is installed on every {@link DocumentBuilder} produced.</li>
  * </ul>
  */
-final class DocumentBuilderHardener {
+public final class DocumentBuilderHardener {
 
     /**
      * {@link DocumentBuilderFactory} subclass that forwards every method to a wrapped delegate.
@@ -192,8 +193,40 @@ final class DocumentBuilderHardener {
     /** Class name of Android's Harmony-based {@link DocumentBuilderFactory}, which exposes no hardening surface. */
     private static final String ANDROID_DOCUMENT_BUILDER_FACTORY = "org.apache.harmony.xml.parsers.DocumentBuilderFactoryImpl";
 
+    /**
+     * Deny-all {@link EntityResolver}: refuses every external entity lookup a {@link DocumentBuilder} attempts.
+     *
+     * <p>Inlined here rather than reused from {@code Resolvers} so the minimal shading footprint of {@link #newInstance()} stays limited to this class and its
+     * setter/limit helpers.</p>
+     */
+    private static final EntityResolver DENY_ALL_ENTITY_RESOLVER = (publicId, systemId) -> {
+        throw new SAXException("External entity fetch forbidden by hardening: publicId=" + publicId + ", systemId=" + systemId);
+    };
+
     /** Xerces feature: load the external DTD subset for non-validating parsers. */
     private static final String XERCES_LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
+
+    /**
+     * Returns a fresh, hardened {@link DocumentBuilderFactory}.
+     *
+     * <p>This is the shading-friendly counterpart of {@link XmlFactories#newDocumentBuilderFactory()}: it yields an identically hardened factory while keeping
+     * the set of classes a consumer must shade down to {@link DocumentBuilderHardener} and its setter and limit helpers, instead of pulling in the whole
+     * {@link XmlFactories} surface. Reach for it when a hardened {@link DocumentBuilderFactory} is the only thing the application needs from this library.</p>
+     *
+     * <p>The returned factory does not fetch external DTDs, does not resolve external entities and bounds internal entity expansion, so DoS payloads such as
+     * Billion Laughs are rejected before they exhaust resources. These guarantees hold whether or not the caller opts into DTD validation or attaches a compiled
+     * XSD: every external resource the validation would otherwise fetch remains blocked.</p>
+     *
+     * <p><strong>Enabling XInclude:</strong> {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on its own does not make XInclude
+     * usable, because an included resource is fetched like any other external resource and is therefore blocked, failing the parse. A caller that genuinely
+     * wants XInclude must, in addition to enabling awareness, install a custom {@link EntityResolver} that permits those specific lookups.</p>
+     *
+     * @return a hardened factory.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
+     */
+    public static DocumentBuilderFactory newInstance() {
+        return harden(DocumentBuilderFactory.newInstance());
+    }
 
     static DocumentBuilderFactory harden(final DocumentBuilderFactory factory) {
         // Android exposes no FSP, ACCESS_EXTERNAL_* or attribute API, and KXmlParser drops user-defined entities; nothing to apply.
@@ -213,7 +246,7 @@ final class DocumentBuilderHardener {
             return factory;
         }
         // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; install a deny-all resolver on every DocumentBuilder.
-        return new HardeningDocumentBuilderFactory(factory, Resolvers.DenyAll.ENTITY2);
+        return new HardeningDocumentBuilderFactory(factory, DENY_ALL_ENTITY_RESOLVER);
     }
 
     private DocumentBuilderHardener() {

@@ -299,7 +299,7 @@ final class Limits {
             final Class<?> clazz = securityManager.getClass();
             clazz.getMethod("setEntityExpansionLimit", int.class).invoke(securityManager, getEntityExpansionLimit());
             clazz.getMethod("setMaxOccurNodeLimit", int.class).invoke(securityManager, getMaxOccurLimit());
-        } catch (final ReflectiveOperationException e) {
+        } catch (final ReflectiveOperationException ignore) {
             // Class on the classpath is not the expected Xerces SecurityManager; leave the limits at whatever defaults it carries.
         }
     }

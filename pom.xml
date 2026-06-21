@@ -104,7 +104,7 @@ limitations under the License.
   </dependencies>
 
   <build>
-    <defaultGoal>clean checkstyle:check spotbugs:check verify</defaultGoal>
+    <defaultGoal>clean checkstyle:check spotbugs:check pmd:check verify</defaultGoal>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -122,6 +122,15 @@ limitations under the License.
           <artifactId>spotbugs-maven-plugin</artifactId>
           <configuration>
             <excludeFilterFile>${basedir}/src/conf/spotbugs-exclude-filter.xml</excludeFilterFile>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-pmd-plugin</artifactId>
+          <configuration>
+            <rulesets>
+              <ruleset>src/conf/maven-pmd-plugin.xml</ruleset>
+            </rulesets>
           </configuration>
         </plugin>
       </plugins>
@@ -366,6 +375,15 @@ limitations under the License.
         <artifactId>spotbugs-maven-plugin</artifactId>
         <configuration>
           <excludeFilterFile>${basedir}/src/conf/spotbugs-exclude-filter.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <configuration>
+          <rulesets>
+            <ruleset>src/conf/maven-pmd-plugin.xml</ruleset>
+          </rulesets>
         </configuration>
       </plugin>
     </plugins>

@@ -188,7 +188,7 @@ final class AndroidProvider {
         reader.setEntityResolver(resolver);
         try {
             reader.setProperty(LEXICAL_HANDLER_PROPERTY, resolver);
-        } catch (final SAXException e) {
+        } catch (final SAXException ignore) {
             // ExpatReader recognises the lexical-handler property; if a future replacement does not, fall through and lose subset-vs-entity discrimination.
         }
         return new GuardedXMLReader(reader);

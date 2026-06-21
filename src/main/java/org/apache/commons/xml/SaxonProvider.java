@@ -21,11 +21,12 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.xpath.XPathFactory;
 
+import org.xml.sax.XMLReader;
+
 import net.sf.saxon.Configuration;
 import net.sf.saxon.jaxp.SaxonTransformerFactory;
 import net.sf.saxon.lib.Feature;
 import net.sf.saxon.xpath.XPathFactoryImpl;
-import org.xml.sax.XMLReader;
 
 /**
  * Hardening recipes for Saxon-HE ({@code net.sf.saxon:Saxon-HE}).

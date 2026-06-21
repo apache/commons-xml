@@ -53,6 +53,9 @@ class SchemaLocationDomTest {
     /** JAXP 1.2 property selecting the schema language used by {@link DocumentBuilderFactory#setValidating(boolean)}. */
     private static final String SCHEMA_LANGUAGE = "http://java.sun.com/xml/jaxp/properties/schemaLanguage";
 
+    /** Value of {@link XMLConstants#ACCESS_EXTERNAL_SCHEMA}, inlined because Android's {@code android.jar} does not expose the constant. */
+    private static final String ACCESS_EXTERNAL_SCHEMA = "http://javax.xml.XMLConstants/property/accessExternalSchema";
+
     private static final String INSTANCE = "schema-location-instance.xml";
 
     @Test
@@ -96,7 +99,7 @@ class SchemaLocationDomTest {
 
     private static boolean supportsAccessExternalSchema() {
         try {
-            DocumentBuilderFactory.newInstance().setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+            DocumentBuilderFactory.newInstance().setAttribute(ACCESS_EXTERNAL_SCHEMA, "");
             return true;
         } catch (final Exception e) {
             return false;

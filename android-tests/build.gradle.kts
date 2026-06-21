@@ -16,6 +16,7 @@
  */
 
 import com.android.build.api.dsl.ManagedVirtualDevice
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
     id("com.android.library") version "8.6.1"
@@ -69,6 +70,12 @@ junitPlatform {
         // Pass single tag expression
         includeTags("dom | sax | schema | trax")
     }
+}
+
+// The androidTest source set compiles all of ../src/test/java; ShadingFootprintTest is JVM-only (it needs org.vafer.jdependency, a Maven-only test
+// dependency, and pins the shading footprint, which is meaningless on Android), so drop it from the Android test compilation.
+tasks.withType<JavaCompile>().configureEach {
+    exclude("**/ShadingFootprintTest.java")
 }
 
 dependencies {

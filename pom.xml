@@ -105,6 +105,20 @@ limitations under the License.
 
   <build>
     <defaultGoal>clean verify</defaultGoal>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <configuration>
+            <configLocation>${basedir}/src/conf/checkstyle.xml</configLocation>
+            <enableRulesSummary>false</enableRulesSummary>
+            <!-- Later:
+            <includeTestSourceDirectory>true</includeTestSourceDirectory> -->
+          </configuration>
+        </plugin>      
+      </plugins>
+    </pluginManagement>
     <plugins>
 
       <!--
@@ -328,11 +342,21 @@ limitations under the License.
           </execution>
         </executions>
       </plugin>
-
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
     </plugins>
   </build>
-
-  <profiles>
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </reporting>
+ <profiles>
     <!--
       Regression guard for the generated OSGi and JPMS descriptors.
       The JPMS test requires JDK 9+

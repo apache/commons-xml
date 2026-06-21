@@ -104,7 +104,7 @@ limitations under the License.
   </dependencies>
 
   <build>
-    <defaultGoal>clean verify</defaultGoal>
+    <defaultGoal>clean checkstyle:check spotbugs:check verify</defaultGoal>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -117,6 +117,13 @@ limitations under the License.
             <includeTestSourceDirectory>true</includeTestSourceDirectory> -->
           </configuration>
         </plugin>      
+        <plugin>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-maven-plugin</artifactId>
+          <configuration>
+            <excludeFilterFile>${basedir}/src/conf/spotbugs-exclude-filter.xml</excludeFilterFile>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -353,6 +360,13 @@ limitations under the License.
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <configuration>
+          <excludeFilterFile>${basedir}/src/conf/spotbugs-exclude-filter.xml</excludeFilterFile>
+        </configuration>
       </plugin>
     </plugins>
   </reporting>

@@ -240,6 +240,8 @@ final class Limits {
      *
      * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance. Every other implementation (the stock JDK and any
      * future attribute-based parser) takes the JDK limit attributes. Neither path throws if the implementation declines a limit.</p>
+     *
+     * @param factory The target factory to modify.
      */
     static void tryApply(final DocumentBuilderFactory factory) {
         if (EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY.equals(factory.getClass().getName())) {
@@ -254,28 +256,36 @@ final class Limits {
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link SchemaFactory}
+     * Sets every JDK-supported limit on a stock JDK {@link SchemaFactory}.
+     *
+     * @param factory The target factory to modify.
      */
     static void applyToJdkSchema(final SchemaFactory factory) {
         JDK_LIMITS.forEach((name, supplier) -> setProperty(factory, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**
-     * Sets every JDK-supported limit on the stock JDK's {@link XMLInputFactory}
+     * Sets every JDK-supported limit on the stock JDK's {@link XMLInputFactory}.
+     *
+     * @param factory The target factory to modify.
      */
     static void applyToJdkStax(final XMLInputFactory factory) {
         JDK_LIMITS.forEach((name, supplier) -> setProperty(factory, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link TransformerFactory}
+     * Sets every JDK-supported limit on a stock JDK {@link TransformerFactory}.
+     *
+     * @param factory The target factory to modify.
      */
     static void applyToJdkTransformer(final TransformerFactory factory) {
         JDK_LIMITS.forEach((name, supplier) -> setAttribute(factory, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link XMLReader}
+     * Sets every JDK-supported limit on a stock JDK {@link XMLReader}.
+     *
+     * @param reader The target reader to modify.
      */
     static void applyToJdkXmlReader(final XMLReader reader) {
         JDK_LIMITS.forEach((name, supplier) -> setProperty(reader, name, Integer.toString(supplier.getAsInt())));
@@ -283,6 +293,8 @@ final class Limits {
 
     /**
      * Sets every JDK-supported limit on a Woodstox {@link XMLInputFactory}.
+     *
+     * @param factory The target factory to modify.
      */
     static void applyToWoodstox(final XMLInputFactory factory) {
         setProperty(factory, WSTX_MAX_ENTITY_COUNT, getEntityExpansionLimit());

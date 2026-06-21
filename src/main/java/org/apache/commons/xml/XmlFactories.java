@@ -192,7 +192,7 @@ public final class XmlFactories {
      * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
-        return DocumentBuilderHardener.newInstance();
+        return DocumentBuilderHardener.harden(DocumentBuilderFactory.newInstance());
     }
 
     /**

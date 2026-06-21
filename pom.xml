@@ -77,9 +77,6 @@ limitations under the License.
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
 
-    <!-- jdependency: class-level reachability analysis, used by the shading-footprint regression test. -->
-    <commons.jdependency.version>2.16</commons.jdependency.version>
-
     <!-- Optional JAXP implementations used by bundled providers. -->
     <commons.saxon.version>12.9</commons.saxon.version>
     <commons.woodstox.version>7.1.1</commons.woodstox.version>
@@ -102,12 +99,6 @@ limitations under the License.
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.vafer</groupId>
-      <artifactId>jdependency</artifactId>
-      <version>${commons.jdependency.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

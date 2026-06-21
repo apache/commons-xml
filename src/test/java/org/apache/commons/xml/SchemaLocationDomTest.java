@@ -41,11 +41,12 @@ import org.xml.sax.helpers.DefaultHandler;
  * {@code xsi:noNamespaceSchemaLocation} hint in the instance document.
  *
  * <p>The instance is empty {@code <root/>}; the referenced schema declares a default {@code leak} attribute carrying {@link AttackTestSupport#LEAKED_MARKER}. A
- * parser that fetches the schema inlines that default into the DOM (the permissive control), while a hardened parser blocks the fetch via
- * {@code accessExternalSchema=""} and surfaces a {@code schema_reference} error instead.</p>
+ * parser that fetches the schema inlines that default into the DOM (the permissive control), while a hardened parser refuses the fetch and fails the parse. The
+ * attribution differs by implementation (the stock JDK reports an {@code accessExternalSchema} / {@code schema_reference} error; external Xerces' deny-all
+ * resolver reports a forbidden-fetch error), so the test only asserts the fetch was blocked, not how.</p>
  *
- * <p>The guard only runs where the implementation honours {@link XMLConstants#ACCESS_EXTERNAL_SCHEMA}: the stock JDK does, external Xerces does not (it rejects
- * the property and would fetch regardless), so the test skips there.</p>
+ * <p>The test runs only where the implementation supports JAXP 1.2 schema-language XSD validation (the stock JDK and external Xerces do; Android does not), so
+ * it skips on parsers without it.</p>
  */
 @Tag("dom")
 class SchemaLocationDomTest {
@@ -53,24 +54,25 @@ class SchemaLocationDomTest {
     /** JAXP 1.2 property selecting the schema language used by {@link DocumentBuilderFactory#setValidating(boolean)}. */
     private static final String SCHEMA_LANGUAGE = "http://java.sun.com/xml/jaxp/properties/schemaLanguage";
 
-    /** Value of {@link XMLConstants#ACCESS_EXTERNAL_SCHEMA}, inlined because Android's {@code android.jar} does not expose the constant. */
-    private static final String ACCESS_EXTERNAL_SCHEMA = "http://javax.xml.XMLConstants/property/accessExternalSchema";
-
     private static final String INSTANCE = "schema-location-instance.xml";
+
+    /** Name of the external schema the instance points at; both block mechanisms name it in the failure message. */
+    private static final String SCHEMA = "schema-location.xsd";
 
     @Test
     void hardenedBlocksExternalSchemaFetch() {
-        assumeTrue(supportsAccessExternalSchema(), "parser does not honour accessExternalSchema");
+        assumeTrue(supportsSchemaLanguage(), "parser does not support JAXP 1.2 schema-language XSD validation");
         final DocumentBuilderFactory factory = enableXsdValidation(XmlFactories.newDocumentBuilderFactory());
-        // The schemaLocation fetch is denied, surfaced as a schema_reference / accessExternalSchema error rather than a silent skip.
+        // The schemaLocation fetch is denied and surfaced as a fatal error rather than a silent fetch. The attribution is implementation-specific, so assert
+        // only that the failure names the external schema, not the mechanism (accessExternalSchema on the JDK, the deny-all resolver on external Xerces).
         final SAXException thrown = assertThrows(SAXException.class, () -> parse(factory));
-        assertTrue(thrown.getMessage() != null && thrown.getMessage().contains("accessExternalSchema"),
-                "Block must be attributed to accessExternalSchema, got: " + thrown.getMessage());
+        assertTrue(thrown.getMessage() != null && thrown.getMessage().contains(SCHEMA),
+                "Block must reference the external schema, got: " + thrown.getMessage());
     }
 
     @Test
     void unconfiguredFetchesExternalSchema() throws Exception {
-        assumeTrue(supportsAccessExternalSchema(), "parser does not honour accessExternalSchema");
+        assumeTrue(supportsSchemaLanguage(), "parser does not support JAXP 1.2 schema-language XSD validation");
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
         // Positive control: without hardening the external schema is fetched and its default attribute is inlined into the DOM.
@@ -97,9 +99,11 @@ class SchemaLocationDomTest {
         return builder.parse(new InputSource(resourceUrl(INSTANCE).toString()));
     }
 
-    private static boolean supportsAccessExternalSchema() {
+    private static boolean supportsSchemaLanguage() {
         try {
-            DocumentBuilderFactory.newInstance().setAttribute(ACCESS_EXTERNAL_SCHEMA, "");
+            final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setValidating(true);
+            factory.setAttribute(SCHEMA_LANGUAGE, XMLConstants.W3C_XML_SCHEMA_NS_URI);
             return true;
         } catch (final Exception e) {
             return false;

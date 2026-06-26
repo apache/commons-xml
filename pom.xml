@@ -64,7 +64,7 @@ limitations under the License.
 
   <properties>
     <!-- Release-related properties -->
-    <commons.release.version>0.1.1</commons.release.version>
+    <commons.release.version>0.1.0</commons.release.version>
     <commons.release.desc>(Java 8+)</commons.release.desc>
     <commons.rc.version>RC1</commons.rc.version>
     <!-- japicmp baseline: disable for first release

@@ -119,7 +119,7 @@ limitations under the License.
   </dependencies>
 
   <build>
-    <defaultGoal>clean checkstyle:check spotbugs:check pmd:check verify</defaultGoal>
+    <defaultGoal>clean checkstyle:check spotbugs:check pmd:check javadoc:javadoc verify</defaultGoal>
     <pluginManagement>
       <plugins>
         <plugin>

@@ -22,7 +22,6 @@ import static org.apache.commons.xml.JaxpSetters.setFeature;
 import static org.apache.commons.xml.JaxpSetters.setProperty;
 
 import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
@@ -71,19 +70,6 @@ final class StockJdkProvider {
      * Zephyr property: skip external DTD subset loading entirely (StAX equivalent of {@link #XERCES_LOAD_EXTERNAL_DTD} {@code = false}).
      */
     private static final String ZEPHYR_IGNORE_EXTERNAL_DTD = "http://java.sun.com/xml/stream/properties/ignore-external-dtd";
-
-    static DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
-        // Required: enables the JDK XMLSecurityManager limits.
-        setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
-        setFeature(factory, XERCES_LOAD_EXTERNAL_DTD, false);
-        // Defense-in-depth: pin to JDK 25 limits so older JDKs do not fall back to looser secure values.
-        Limits.applyToJdkDom(factory);
-        // Defense-in-depth: already FSP-secure defaults, set explicitly so they are not relaxed via system property.
-        setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
-        setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-        return factory;
-    }
 
     static SAXParserFactory configure(final SAXParserFactory factory) {
         // Required: enables the JDK XMLSecurityManager limits.

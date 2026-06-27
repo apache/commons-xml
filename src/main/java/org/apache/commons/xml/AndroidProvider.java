@@ -172,10 +172,6 @@ final class AndroidProvider {
 
     private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
 
-    static DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
-        return factory;
-    }
-
     static SAXParserFactory configure(final SAXParserFactory factory) {
         return new GuardedSAXParserFactory(factory);
     }

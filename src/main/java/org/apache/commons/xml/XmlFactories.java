@@ -73,19 +73,6 @@ import org.xml.sax.XMLReader;
  */
 public final class XmlFactories {
 
-    static DocumentBuilderFactory dispatch(final DocumentBuilderFactory factory) {
-        switch (factory.getClass().getName()) {
-            case "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl":
-                return StockJdkProvider.configure(factory);
-            case "org.apache.harmony.xml.parsers.DocumentBuilderFactoryImpl":
-                return AndroidProvider.configure(factory);
-            case "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl":
-                return XercesProvider.configure(factory);
-            default:
-                throw noProvider(factory);
-        }
-    }
-
     private static SAXParserFactory dispatch(final SAXParserFactory factory) {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl":
@@ -197,16 +184,15 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link DocumentBuilderFactory}.
      *
-     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is disabled. Calling
-     * {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on the returned factory does not re-enable resolution; a parse that
-     * encounters an {@code xi:include} element fails.</p>
+     * <p><strong>Enabling XInclude:</strong> {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on its own does not make XInclude
+     * usable, because an included resource is fetched like any other external resource and is therefore blocked, failing the parse. A caller that genuinely
+     * wants XInclude must, in addition to enabling awareness, install a custom {@link org.xml.sax.EntityResolver} that permits those specific lookups.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying JAXP implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
-     *         apply its settings to it.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static DocumentBuilderFactory newDocumentBuilderFactory() {
-        return dispatch(DocumentBuilderFactory.newInstance());
+        return DocumentBuilderHardener.harden(DocumentBuilderFactory.newInstance());
     }
 
     /**

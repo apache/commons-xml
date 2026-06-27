@@ -55,12 +55,34 @@ final class JaxpSetters {
         apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
     }
 
+    /** @return {@code true} if the attribute was applied, {@code false} if the implementation rejected it. */
+    static boolean trySetAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        try {
+            factory.setAttribute(attribute, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
+    static void setOptionalAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        trySetAttribute(factory, attribute, value);
+    }
+
     static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
         apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
     }
 
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
         apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+    }
+
+    static void setOptionalFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
+        try {
+            factory.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognise this feature.
+        }
     }
 
     static void setFeature(final SAXParserFactory factory, final String feature, final boolean value) {

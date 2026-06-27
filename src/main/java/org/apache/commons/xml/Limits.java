@@ -17,6 +17,7 @@
 package org.apache.commons.xml;
 
 import static org.apache.commons.xml.JaxpSetters.setAttribute;
+import static org.apache.commons.xml.JaxpSetters.setOptionalAttribute;
 import static org.apache.commons.xml.JaxpSetters.setProperty;
 
 import java.util.Collections;
@@ -216,6 +217,10 @@ final class Limits {
      * Woodstox property: maximum number of entity expansions in a single parse.
      */
     private static final String WSTX_MAX_ENTITY_COUNT = "com.ctc.wstx.maxEntityCount";
+    /**
+     * Class name of the external Apache Xerces {@link DocumentBuilderFactory}, whose limits live on a {@code SecurityManager} rather than JDK attributes.
+     */
+    private static final String EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY = "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl";
 
     static {
         final Map<String, IntSupplier> map = new LinkedHashMap<>();
@@ -231,12 +236,23 @@ final class Limits {
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link DocumentBuilderFactory}.
+     * Best-effort application of the processing limits to a {@link DocumentBuilderFactory}, dispatched on the implementation.
+     *
+     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance. Every other implementation (the stock JDK and any
+     * future attribute-based parser) takes the JDK limit attributes. Neither path throws if the implementation declines a limit.</p>
      *
      * @param factory The target factory to modify.
      */
-    static void applyToJdkDom(final DocumentBuilderFactory factory) {
-        JDK_LIMITS.forEach((name, supplier) -> setAttribute(factory, name, Integer.toString(supplier.getAsInt())));
+    static void tryApply(final DocumentBuilderFactory factory) {
+        if (EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY.equals(factory.getClass().getName())) {
+            // Install a fresh SecurityManager pinned to JDK 25 limits, replacing Xerces' built-in caps which are looser than even JDK 8.
+            final Object securityManager = newSecurityManager();
+            applyToXerces(securityManager);
+            setAttribute(factory, XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
+            return;
+        }
+        // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognise.
+        JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**
@@ -301,6 +317,14 @@ final class Limits {
             clazz.getMethod("setMaxOccurNodeLimit", int.class).invoke(securityManager, getMaxOccurLimit());
         } catch (final ReflectiveOperationException ignore) {
             // Class on the classpath is not the expected Xerces SecurityManager; leave the limits at whatever defaults it carries.
+        }
+    }
+
+    private static Object newSecurityManager() {
+        try {
+            return Class.forName("org.apache.xerces.util.SecurityManager").getDeclaredConstructor().newInstance();
+        } catch (final ReflectiveOperationException e) {
+            throw new HardeningException("Failed to instantiate org.apache.xerces.util.SecurityManager; expected Xerces to be on the classpath", e);
         }
     }
 

@@ -16,6 +16,7 @@
  */
 
 import com.android.build.api.dsl.ManagedVirtualDevice
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
     id("com.android.library") version "8.6.1"

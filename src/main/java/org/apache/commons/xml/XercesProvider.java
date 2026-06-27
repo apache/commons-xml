@@ -20,9 +20,6 @@ package org.apache.commons.xml;
 import static org.apache.commons.xml.JaxpSetters.setFeature;
 
 import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.validation.Schema;
@@ -30,7 +27,6 @@ import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 import javax.xml.validation.ValidatorHandler;
 
-import org.xml.sax.EntityResolver;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
@@ -39,7 +35,7 @@ import org.xml.sax.XMLReader;
  * Hardening recipes for the external Apache Xerces distribution (the {@code xerces:xercesImpl} artifact).
  *
  * <p>Factory classes live in the {@code org.apache.xerces.*} package. External Xerces does not ship a {@code TransformerFactory}, {@code XMLInputFactory} or
- * {@code XPathFactory}, so this class only handles DOM, SAX and Schema factories.</p>
+ * {@code XPathFactory}, so this class only handles SAX and Schema factories. DOM hardening lives in {@link DocumentBuilderHardener}.</p>
  *
  * <p>Hardening recipe applied to every factory below uses the same building blocks:</p>
  * <ul>
@@ -53,8 +49,7 @@ import org.xml.sax.XMLReader;
  *         {@code ACCESS_EXTERNAL_*} properties, so an explicit resolver installed on every parser/validator is the best way to block external
  *         entity, DTD and schema fetching, without disabling those features altogether. The wrappers exist for two reasons:</p>
  *         <ol>
- *             <li>{@link DocumentBuilderFactory} / {@link SAXParserFactory} carry no resolver, so it has to be set on each
- *             {@link DocumentBuilder} / {@link SAXParser} produced;</li>
+ *             <li>{@link SAXParserFactory} carries no resolver, so it has to be set on each {@link SAXParser} produced.</li>
  *             <li>Xerces' {@link Schema} does not propagate the {@link SchemaFactory}'s resolver or security manager to its
  *             {@link Validator} / {@link ValidatorHandler} products, so the wrapper re-installs both on every product.</li>
  *         </ol>
@@ -62,29 +57,6 @@ import org.xml.sax.XMLReader;
  * </ul>
  */
 final class XercesProvider {
-
-    /**
-     * Hardened Xerces {@link DocumentBuilderFactory} wrapper.
-     *
-     * <p>Sets the deny-all {@link EntityResolver} on every {@link DocumentBuilder} produced; required because {@link DocumentBuilderFactory} carries no
-     * resolver of its own and Xerces does not honour JAXP 1.5 {@code ACCESS_EXTERNAL_*}.</p>
-     */
-    private static final class HardeningDocumentBuilderFactory extends DelegatingDocumentBuilderFactory {
-
-        private final EntityResolver resolver;
-
-        HardeningDocumentBuilderFactory(final DocumentBuilderFactory delegate, final EntityResolver resolver) {
-            super(delegate);
-            this.resolver = resolver;
-        }
-
-        @Override
-        public DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
-            final DocumentBuilder builder = super.newDocumentBuilder();
-            builder.setEntityResolver(resolver);
-            return builder;
-        }
-    }
 
     private static Validator hardenValidator(final Validator validator) {
         try {
@@ -113,27 +85,6 @@ final class XercesProvider {
 
     /** Xerces feature: load the external DTD subset for non-validating parsers. */
     private static final String XERCES_LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
-
-    private static Object newSecurityManager() {
-        try {
-            return Class.forName("org.apache.xerces.util.SecurityManager").getDeclaredConstructor().newInstance();
-        } catch (final ReflectiveOperationException e) {
-            throw new HardeningException("Failed to instantiate org.apache.xerces.util.SecurityManager; expected Xerces to be on the classpath", e);
-        }
-    }
-
-    static DocumentBuilderFactory configure(final DocumentBuilderFactory factory) {
-        // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).
-        setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
-        setFeature(factory, XERCES_LOAD_EXTERNAL_DTD, false);
-        // Defense-in-depth: install a fresh SecurityManager pinned to JDK 25 limits, replacing Xerces' built-in caps which are looser than even JDK 8.
-        final Object securityManager = newSecurityManager();
-        Limits.applyToXerces(securityManager);
-        factory.setAttribute(XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
-        // Required: Xerces does not honour JAXP 1.5 ACCESS_EXTERNAL_*; the wrapper installs a deny-all resolver on every DocumentBuilder.
-        return new HardeningDocumentBuilderFactory(factory, Resolvers.DenyAll.ENTITY2);
-    }
 
     static SAXParserFactory configure(final SAXParserFactory factory) {
         // Required: enables Xerces' built-in SecurityManager (which is what carries the limits).

@@ -23,16 +23,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies that an unknown factory class surfaces {@link IllegalStateException} with a message naming the class.
+ * Verifies that an implementation which does not honour the required secure-processing feature surfaces {@link IllegalStateException} with a message naming the
+ * class.
  */
 class UnsupportedXmlImplementationTest {
 
     /**
-     * A stand-in factory class whose fully qualified name is not matched by any bundled hardening recipe.
+     * A stand-in factory that rejects the secure-processing feature, like a JAXP implementation that does not recognise it.
      */
     public static final class FakeDocumentBuilderFactory extends DocumentBuilderFactory {
 
@@ -52,8 +54,8 @@ class UnsupportedXmlImplementationTest {
         }
 
         @Override
-        public void setFeature(final String name, final boolean value) {
-            // no-op
+        public void setFeature(final String name, final boolean value) throws ParserConfigurationException {
+            throw new ParserConfigurationException("feature not recognised: " + name);
         }
 
         @Override
@@ -63,10 +65,10 @@ class UnsupportedXmlImplementationTest {
     }
 
     @Test
-    void dispatchRejectsUnknownFactory() {
+    void hardenRejectsUnsecurableFactory() {
         final IllegalStateException thrown = assertThrows(
                 IllegalStateException.class,
-                () -> XmlFactories.dispatch(new FakeDocumentBuilderFactory()));
+                () -> DocumentBuilderHardener.harden(new FakeDocumentBuilderFactory()));
         assertNotNull(thrown.getMessage());
         assertTrue(thrown.getMessage().contains(FakeDocumentBuilderFactory.class.getName()),
                 "Exception message must name the unsupported class: " + thrown.getMessage());

@@ -55,7 +55,15 @@ final class JaxpSetters {
         apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
     }
 
-    /** @return {@code true} if the attribute was applied, {@code false} if the implementation rejected it. */
+    /**
+     * Sets an attribute on a {@link DocumentBuilderFactory} and returns whether the implementation accepted it. Some implementations may reject certain
+     * attributes, in which case this method will return {@code false}.
+     *
+     * @param factory   The target factory on which to set the attribute.
+     * @param attribute The name of the attribute to set.
+     * @param value     The value of the attribute to set.
+     * @return {@code true} if the attribute was applied, {@code false} if the implementation rejected it.
+     */
     static boolean trySetAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
         try {
             factory.setAttribute(attribute, value);

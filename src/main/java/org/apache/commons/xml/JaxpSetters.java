@@ -37,6 +37,10 @@ import org.xml.sax.XMLReader;
  */
 final class JaxpSetters {
 
+    private static final String KIND_PROPERTY = "property";
+    private static final String KIND_FEATURE = "feature";
+    private static final String KIND_ATTRIBUTE = "attribute";
+
     /** Action that may throw any exception; used to share a single try/catch around every JAXP setter. */
     @FunctionalInterface
     private interface ThrowingAction {
@@ -52,7 +56,7 @@ final class JaxpSetters {
     }
 
     static void setAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
+        apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
     }
 
     /**
@@ -78,11 +82,11 @@ final class JaxpSetters {
     }
 
     static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
-        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
+        apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
     }
 
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setOptionalFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
@@ -94,55 +98,55 @@ final class JaxpSetters {
     }
 
     static void setFeature(final SAXParserFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final TransformerFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final XPathFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final SchemaFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final Validator validator, final String feature, final boolean value) {
-        apply(validator, "feature", feature, () -> validator.setFeature(feature, value));
+        apply(validator, KIND_FEATURE, feature, () -> validator.setFeature(feature, value));
     }
 
     static void setFeature(final ValidatorHandler handler, final String feature, final boolean value) {
-        apply(handler, "feature", feature, () -> handler.setFeature(feature, value));
+        apply(handler, KIND_FEATURE, feature, () -> handler.setFeature(feature, value));
     }
 
     static void setFeature(final XMLReader reader, final String feature, final boolean value) {
-        apply(reader, "feature", feature, () -> reader.setFeature(feature, value));
+        apply(reader, KIND_FEATURE, feature, () -> reader.setFeature(feature, value));
     }
 
     static void setProperty(final XMLInputFactory factory, final String property, final Object value) {
-        apply(factory, "property", property, () -> factory.setProperty(property, value));
+        apply(factory, KIND_PROPERTY, property, () -> factory.setProperty(property, value));
     }
 
     static void setProperty(final SAXParser parser, final String property, final Object value) {
-        apply(parser, "property", property, () -> parser.setProperty(property, value));
+        apply(parser, KIND_PROPERTY, property, () -> parser.setProperty(property, value));
     }
 
     static void setProperty(final XMLReader reader, final String property, final Object value) {
-        apply(reader, "property", property, () -> reader.setProperty(property, value));
+        apply(reader, KIND_PROPERTY, property, () -> reader.setProperty(property, value));
     }
 
     static void setProperty(final SchemaFactory factory, final String property, final Object value) {
-        apply(factory, "property", property, () -> factory.setProperty(property, value));
+        apply(factory, KIND_PROPERTY, property, () -> factory.setProperty(property, value));
     }
 
     static void setProperty(final Validator validator, final String property, final Object value) {
-        apply(validator, "property", property, () -> validator.setProperty(property, value));
+        apply(validator, KIND_PROPERTY, property, () -> validator.setProperty(property, value));
     }
 
     static void setProperty(final ValidatorHandler handler, final String property, final Object value) {
-        apply(handler, "property", property, () -> handler.setProperty(property, value));
+        apply(handler, KIND_PROPERTY, property, () -> handler.setProperty(property, value));
     }
 
     private JaxpSetters() {

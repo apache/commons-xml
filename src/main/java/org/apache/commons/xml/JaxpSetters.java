@@ -93,7 +93,7 @@ final class JaxpSetters {
         try {
             factory.setFeature(feature, value);
         } catch (final Exception e) {
-            // Ignored: the implementation does not recognise this feature.
+            // Ignored: the implementation does not recognize this feature.
         }
     }
 

@@ -138,35 +138,35 @@ final class Limits {
      */
     private static final Map<String, IntSupplier> JDK_LIMITS;
     /**
-     * URL form of the JDK's per-element attribute limit; recognised across JDK 8 through 25.
+     * URL form of the JDK's per-element attribute limit; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_ELEMENT_ATTRIBUTE_LIMIT = "http://www.oracle.com/xml/jaxp/properties/elementAttributeLimit";
     /**
-     * URL form of the JDK's entity-expansion limit; recognised across JDK 8 through 25. The short form {@code jdk.xml.entityExpansionLimit} is JDK 11+ only.
+     * URL form of the JDK's entity-expansion limit; recognized across JDK 8 through 25. The short form {@code jdk.xml.entityExpansionLimit} is JDK 11+ only.
      */
     private static final String JDK_URL_ENTITY_EXPANSION_LIMIT = "http://www.oracle.com/xml/jaxp/properties/entityExpansionLimit";
     /**
-     * URL form of the JDK's cumulative entity-replacement limit; recognised across JDK 8 through 25.
+     * URL form of the JDK's cumulative entity-replacement limit; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_ENTITY_REPLACEMENT_LIMIT = "http://www.oracle.com/xml/jaxp/properties/entityReplacementLimit";
     /**
-     * URL form of the JDK's per-general-entity size limit; recognised across JDK 8 through 25.
+     * URL form of the JDK's per-general-entity size limit; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_GENERAL_ENTITY_SIZE_LIMIT = "http://www.oracle.com/xml/jaxp/properties/maxGeneralEntitySizeLimit";
     /**
-     * URL form of the JDK's maximum element depth; recognised across JDK 8 through 25.
+     * URL form of the JDK's maximum element depth; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_MAX_ELEMENT_DEPTH = "http://www.oracle.com/xml/jaxp/properties/maxElementDepth";
     /**
-     * URL form of the JDK's maximum XML name length; recognised across JDK 8 through 25.
+     * URL form of the JDK's maximum XML name length; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_MAX_NAME_LIMIT = "http://www.oracle.com/xml/jaxp/properties/maxXMLNameLimit";
     /**
-     * URL form of the JDK's per-parameter-entity size limit; recognised across JDK 8 through 25.
+     * URL form of the JDK's per-parameter-entity size limit; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_PARAMETER_ENTITY_SIZE_LIMIT = "http://www.oracle.com/xml/jaxp/properties/maxParameterEntitySizeLimit";
     /**
-     * URL form of the JDK's total entity-size limit; recognised across JDK 8 through 25.
+     * URL form of the JDK's total entity-size limit; recognized across JDK 8 through 25.
      */
     private static final String JDK_URL_TOTAL_ENTITY_SIZE_LIMIT = "http://www.oracle.com/xml/jaxp/properties/totalEntitySizeLimit";
     /**
@@ -251,7 +251,7 @@ final class Limits {
             setAttribute(factory, XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
             return;
         }
-        // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognise.
+        // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
         JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
     }
 

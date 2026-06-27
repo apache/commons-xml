@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 class UnsupportedXmlImplementationTest {
 
     /**
-     * A stand-in factory that rejects the secure-processing feature, like a JAXP implementation that does not recognise it.
+     * A stand-in factory that rejects the secure-processing feature, like a JAXP implementation that does not recognize it.
      */
     public static final class FakeDocumentBuilderFactory extends DocumentBuilderFactory {
 
@@ -55,7 +55,7 @@ class UnsupportedXmlImplementationTest {
 
         @Override
         public void setFeature(final String name, final boolean value) throws ParserConfigurationException {
-            throw new ParserConfigurationException("feature not recognised: " + name);
+            throw new ParserConfigurationException("feature not recognized: " + name);
         }
 
         @Override

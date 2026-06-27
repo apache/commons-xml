@@ -33,7 +33,7 @@ import org.xml.sax.EntityResolver;
  *
  * <p>Rather than branching on the implementation class, {@link #harden(DocumentBuilderFactory)} probes what the factory supports and adapts:</p>
  * <ul>
- *     <li><strong>Android</strong> (Harmony / KXmlParser): recognised by class name and left untouched. It exposes no {@link XMLConstants#FEATURE_SECURE_PROCESSING
+ *     <li><strong>Android</strong> (Harmony / KXmlParser): recognized by class name and left untouched. It exposes no {@link XMLConstants#FEATURE_SECURE_PROCESSING
  *         FSP}, no JAXP 1.5 {@code ACCESS_EXTERNAL_*} and no attribute API at all, while KXmlParser silently drops user-defined entities, so there is nothing to
  *         apply.</li>
  *     <li><strong>FSP</strong>: required. It switches on the implementation's built-in security manager, which is what carries the processing limits.</li>

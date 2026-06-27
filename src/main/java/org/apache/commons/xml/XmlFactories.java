@@ -164,7 +164,7 @@ public final class XmlFactories {
      *
      * @param reader the reader to harden; never {@code null}.
      * @return a hardened reader.
-     * @throws IllegalStateException if the reader's concrete class is not recognised by any bundled hardening recipe, or if the matching recipe cannot apply
+     * @throws IllegalStateException if the reader's concrete class is not recognized by any bundled hardening recipe, or if the matching recipe cannot apply
      *         its settings to it.
      */
     public static XMLReader harden(final XMLReader reader) {
@@ -203,7 +203,7 @@ public final class XmlFactories {
      * an {@code xi:include} element fails.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying JAXP implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     * @throws IllegalStateException if the underlying JAXP implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
      *         apply its settings to it.
      */
     public static SAXParserFactory newSAXParserFactory() {
@@ -224,7 +224,7 @@ public final class XmlFactories {
      * resulting {@link javax.xml.validation.Schema}.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying Schema implementation is not recognised by any bundled hardening recipe, or if the matching recipe
+     * @throws IllegalStateException if the underlying Schema implementation is not recognized by any bundled hardening recipe, or if the matching recipe
      *         cannot apply its settings to it.
      */
     public static SchemaFactory newSchemaFactory() {
@@ -241,7 +241,7 @@ public final class XmlFactories {
      * {@code Transformer.transform(Source, Result)} time.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying TrAX implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     * @throws IllegalStateException if the underlying TrAX implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
      *         apply its settings to it.
      */
     public static TransformerFactory newTransformerFactory() {
@@ -254,7 +254,7 @@ public final class XmlFactories {
      * <p>The three universal guarantees on {@link XmlFactories} apply; StAX exposes no additional vectors beyond them.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying StAX implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     * @throws IllegalStateException if the underlying StAX implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
      *         apply its settings to it.
      */
     public static XMLInputFactory newXMLInputFactory() {
@@ -268,7 +268,7 @@ public final class XmlFactories {
      * {@code unparsed-text()}) are not resolved.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying XPath implementation is not recognised by any bundled hardening recipe, or if the matching recipe cannot
+     * @throws IllegalStateException if the underlying XPath implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
      *         apply its settings to it.
      */
     public static XPathFactory newXPathFactory() {

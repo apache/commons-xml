@@ -50,7 +50,7 @@ import org.xml.sax.ext.LexicalHandler;
  *         {@code external-general-entities} and {@code external-parameter-entities}. The last three are read-only and cannot be enabled.
  *         Setting both {@code namespaces} and {@code namespace-prefixes} triggers an automatic exception at parse time.</li>
  *     <li>SAX properties: only {@code lexical-handler}.</li>
- *     <li>{@link XMLConstants#FEATURE_SECURE_PROCESSING} and JAXP 1.5 {@code ACCESS_EXTERNAL_*} are not recognised.</li>
+ *     <li>{@link XMLConstants#FEATURE_SECURE_PROCESSING} and JAXP 1.5 {@code ACCESS_EXTERNAL_*} are not recognized.</li>
  *     <li>Entity expansion: native libexpat enforces a built-in Billion Laughs check (compiled-in activation threshold and amplification factor), so internal
  *         entity expansion is already bounded below us.</li>
  *     <li>Every external fetch (DTD subset, DOCTYPE {@code SYSTEM}, general/parameter entity) flows through the 2-arg {@link EntityResolver#resolveEntity}.
@@ -59,9 +59,9 @@ import org.xml.sax.ext.LexicalHandler;
  *
  * <p>What the DOM/KXmlParser surface exposes:</p>
  * <ul>
- *     <li>{@link DocumentBuilderFactory#setFeature} only recognises {@code namespaces} and {@code validation}.</li>
+ *     <li>{@link DocumentBuilderFactory#setFeature} only recognizes {@code namespaces} and {@code validation}.</li>
  *     <li>{@link DocumentBuilderFactory#setAttribute} always throws {@code IllegalArgumentException}.</li>
- *     <li>{@link XMLConstants#FEATURE_SECURE_PROCESSING} and JAXP 1.5 {@code ACCESS_EXTERNAL_*} are not recognised.</li>
+ *     <li>{@link XMLConstants#FEATURE_SECURE_PROCESSING} and JAXP 1.5 {@code ACCESS_EXTERNAL_*} are not recognized.</li>
  *     <li>Entity expansion: KXmlParser does not support user-defined entities and they are silently dropped.</li>
  * </ul>
  *
@@ -185,7 +185,7 @@ final class AndroidProvider {
         try {
             reader.setProperty(LEXICAL_HANDLER_PROPERTY, resolver);
         } catch (final SAXException ignore) {
-            // ExpatReader recognises the lexical-handler property; if a future replacement does not, fall through and lose subset-vs-entity discrimination.
+            // ExpatReader recognizes the lexical-handler property; if a future replacement does not, fall through and lose subset-vs-entity discrimination.
         }
         return new GuardedXMLReader(reader);
     }

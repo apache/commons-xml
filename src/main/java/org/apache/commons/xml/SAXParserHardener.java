@@ -146,8 +146,11 @@ final class SAXParserHardener {
     }
 
     /**
-     * Capability-driven hardening for a single {@link XMLReader}, whatever produced it (a {@link HardeningSAXParser} product, a Saxon-picked reader or a raw
-     * reader handed to {@link XmlFactories#harden(XMLReader)}).
+     * Hardens an existing {@link XMLReader}.
+     *
+     * @param reader the reader to harden; never {@code null}.
+     * @return a hardened reader.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     static XMLReader hardenReader(final XMLReader reader) {
         if (reader instanceof ExpatReaderWrapper) {

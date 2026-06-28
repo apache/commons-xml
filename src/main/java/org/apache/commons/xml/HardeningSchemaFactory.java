@@ -17,53 +17,51 @@
 
 package org.apache.commons.xml;
 
-import java.util.function.UnaryOperator;
-
 import javax.xml.transform.Source;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
-import javax.xml.validation.ValidatorHandler;
 
 import org.xml.sax.SAXException;
 
 /**
- * {@link SchemaFactory} wrapper that rewrites every Source-taking entry point through {@link XmlFactories#harden(Source)} and applies provider-specific
- * decoration to every {@link Validator} and {@link ValidatorHandler} that the produced {@link Schema} hands out.
+ * Capability-driven hardening wrapper for any {@link SchemaFactory} on the classpath, the same recipe for every implementation. It is the entry point reached
+ * by {@link XmlFactories#newSchemaFactory()}; there is no per-implementation branching, no {@code FEATURE_SECURE_PROCESSING} and no limit configuration on the
+ * factory itself.
  *
  * <p>Three layers cooperate:</p>
  * <ol>
- *   <li>{@link HardeningSchemaFactory} rewrites the Source on every {@code newSchema(Source[])} entry point.</li>
- *   <li>{@link HardeningSchema} applies the provider-specific hardener to every Validator/ValidatorHandler the inner Schema produces (e.g. Xerces re-installs
- *       its {@code LSResourceResolver} and {@code SecurityManager} since it does not propagate them through Schema).</li>
+ *   <li>{@link HardeningSchemaFactory} installs a deny-all {@link Resolvers.DenyAll#LS_RESOURCE} on the factory (blocking
+ *       {@code xs:import}/{@code xs:include}/{@code xs:redefine} at compile time) and rewrites the Source on every {@code newSchema(Source[])} entry point
+ *       through {@link XmlFactories#harden(Source)}.</li>
+ *   <li>{@link HardeningSchema} wraps every Validator/ValidatorHandler the inner Schema produces and re-installs the deny-all resolver on each (blocking
+ *       {@code xsi:schemaLocation} at validation time), since neither the JDK nor Xerces reliably propagates it through {@code Schema}.</li>
  *   <li>{@link HardeningValidator} rewrites the Source on every {@link Validator#validate(Source)} call.</li>
  * </ol>
+ *
+ * <p>The hardened reader supplied by {@link XmlFactories#harden(Source)} already carries {@code FEATURE_SECURE_PROCESSING} and the processing limits, so a
+ * DOCTYPE, external entity or Billion Laughs payload in the schema or instance document is bounded there rather than on this factory. The JAXP 1.5
+ * {@code ACCESS_EXTERNAL_*} properties are deliberately not set: the deny-all resolver already blocks the same fetches on every implementation, and the JDK 8
+ * {@code SchemaFactory} has a bug whereby those properties keep blocking even when a caller's own resolver would grant the access, so leaving them unset lets a
+ * caller re-enable specific lookups by swapping the resolver.</p>
  */
 final class HardeningSchemaFactory extends DelegatingSchemaFactory {
 
-    private final UnaryOperator<Validator> validatorHardener;
-    private final UnaryOperator<ValidatorHandler> handlerHardener;
-
     HardeningSchemaFactory(final SchemaFactory delegate) {
-        this(delegate, UnaryOperator.identity(), UnaryOperator.identity());
-    }
-
-    HardeningSchemaFactory(final SchemaFactory delegate, final UnaryOperator<Validator> validatorHardener,
-            final UnaryOperator<ValidatorHandler> handlerHardener) {
         super(delegate);
-        this.validatorHardener = validatorHardener;
-        this.handlerHardener = handlerHardener;
+        // Compile-time block for xs:import/include/redefine; the wrappers carry the rest (per-product resolver, source rewriting, limits via the reader).
+        delegate.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
     }
 
     @Override
     public Schema newSchema() throws SAXException {
-        return new HardeningSchema(super.newSchema(), validatorHardener, handlerHardener);
+        return new HardeningSchema(super.newSchema());
     }
 
     @Override
     public Schema newSchema(final Source[] schemas) throws SAXException {
-        return new HardeningSchema(super.newSchema(harden(schemas)), validatorHardener, handlerHardener);
+        return new HardeningSchema(super.newSchema(harden(schemas)));
     }
 
     private static Source[] harden(final Source[] schemas) throws SAXException {

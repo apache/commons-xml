@@ -17,36 +17,33 @@
 
 package org.apache.commons.xml;
 
-import java.util.function.UnaryOperator;
-
 import javax.xml.validation.Schema;
 import javax.xml.validation.Validator;
 import javax.xml.validation.ValidatorHandler;
 
 /**
- * {@link Schema} wrapper that applies provider-specific decoration to every {@link Validator} and {@link ValidatorHandler} the inner Schema produces, then
- * wraps each {@link Validator} in {@link HardeningValidator} so {@link Validator#validate(javax.xml.transform.Source)} runs through
- * {@link XmlFactories#harden(javax.xml.transform.Source)}.
+ * {@link Schema} wrapper that hardens every {@link Validator} and {@link ValidatorHandler} the inner Schema produces: each {@link Validator} is wrapped in
+ * {@link HardeningValidator} (which rewrites the Source through {@link XmlFactories#harden(javax.xml.transform.Source)} and installs the deny-all resolver), and
+ * each {@link ValidatorHandler} gets the same deny-all {@link Resolvers.DenyAll#LS_RESOURCE} so {@code xsi:schemaLocation} is not resolved during SAX-driven
+ * validation.
  */
 final class HardeningSchema extends Schema {
 
     private final Schema delegate;
-    private final UnaryOperator<Validator> validatorHardener;
-    private final UnaryOperator<ValidatorHandler> handlerHardener;
 
-    HardeningSchema(final Schema delegate, final UnaryOperator<Validator> validatorHardener, final UnaryOperator<ValidatorHandler> handlerHardener) {
+    HardeningSchema(final Schema delegate) {
         this.delegate = delegate;
-        this.validatorHardener = validatorHardener;
-        this.handlerHardener = handlerHardener;
     }
 
     @Override
     public Validator newValidator() {
-        return new HardeningValidator(validatorHardener.apply(delegate.newValidator()));
+        return new HardeningValidator(delegate.newValidator());
     }
 
     @Override
     public ValidatorHandler newValidatorHandler() {
-        return handlerHardener.apply(delegate.newValidatorHandler());
+        final ValidatorHandler handler = delegate.newValidatorHandler();
+        handler.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
+        return handler;
     }
 }

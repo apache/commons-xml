@@ -28,7 +28,6 @@ import java.util.function.IntSupplier;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.validation.SchemaFactory;
 
 import org.xml.sax.XMLReader;
 
@@ -253,15 +252,6 @@ final class Limits {
         }
         // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
         JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
-     * Sets every JDK-supported limit on a stock JDK {@link SchemaFactory}.
-     *
-     * @param factory The target factory to modify.
-     */
-    static void applyToJdkSchema(final SchemaFactory factory) {
-        JDK_LIMITS.forEach((name, supplier) -> setProperty(factory, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**

@@ -37,15 +37,14 @@ import org.xml.sax.XMLReader;
  */
 final class JaxpSetters {
 
-    private static final String KIND_PROPERTY = "property";
-    private static final String KIND_FEATURE = "feature";
-    private static final String KIND_ATTRIBUTE = "attribute";
-
     /** Action that may throw any exception; used to share a single try/catch around every JAXP setter. */
     @FunctionalInterface
     private interface ThrowingAction {
         void run() throws Exception;
     }
+    private static final String KIND_ATTRIBUTE = "attribute";
+    private static final String KIND_FEATURE = "feature";
+    private static final String KIND_PROPERTY = "property";
 
     private static void apply(final Object factory, final String kind, final String name, final ThrowingAction action) {
         try {
@@ -59,42 +58,12 @@ final class JaxpSetters {
         apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
     }
 
-    /**
-     * Sets an attribute on a {@link DocumentBuilderFactory} and returns whether the implementation accepted it. Some implementations may reject certain
-     * attributes, in which case this method will return {@code false}.
-     *
-     * @param factory   The target factory on which to set the attribute.
-     * @param attribute The name of the attribute to set.
-     * @param value     The value of the attribute to set.
-     * @return {@code true} if the attribute was applied, {@code false} if the implementation rejected it.
-     */
-    static boolean trySetAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        try {
-            factory.setAttribute(attribute, value);
-            return true;
-        } catch (final Exception e) {
-            return false;
-        }
-    }
-
-    static void setOptionalAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        trySetAttribute(factory, attribute, value);
-    }
-
     static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
         apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
     }
 
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
         apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
-    }
-
-    static void setOptionalFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
-        try {
-            factory.setFeature(feature, value);
-        } catch (final Exception e) {
-            // Ignored: the implementation does not recognize this feature.
-        }
     }
 
     static void setFeature(final SAXParserFactory factory, final String feature, final boolean value) {
@@ -125,6 +94,22 @@ final class JaxpSetters {
         apply(reader, KIND_FEATURE, feature, () -> reader.setFeature(feature, value));
     }
 
+    static void setOptionalAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        trySetAttribute(factory, attribute, value);
+    }
+
+    static void setOptionalFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
+        try {
+            factory.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this feature.
+        }
+    }
+
+    static void setOptionalProperty(final XMLInputFactory factory, final String property, final Object value) {
+        trySetProperty(factory, property, value);
+    }
+
     static void setProperty(final XMLInputFactory factory, final String property, final Object value) {
         apply(factory, KIND_PROPERTY, property, () -> factory.setProperty(property, value));
     }
@@ -147,6 +132,41 @@ final class JaxpSetters {
 
     static void setProperty(final ValidatorHandler handler, final String property, final Object value) {
         apply(handler, KIND_PROPERTY, property, () -> handler.setProperty(property, value));
+    }
+
+    /**
+     * Sets an attribute on a {@link DocumentBuilderFactory} and returns whether the implementation accepted it. Some implementations may reject certain
+     * attributes, in which case this method will return {@code false}.
+     *
+     * @param factory   The target factory on which to set the attribute.
+     * @param attribute The name of the attribute to set.
+     * @param value     The value of the attribute to set.
+     * @return {@code true} if the attribute was applied, {@code false} if the implementation rejected it.
+     */
+    static boolean trySetAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        try {
+            factory.setAttribute(attribute, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Sets a property on an {@link XMLInputFactory} and returns whether the implementation accepted it.
+     *
+     * @param factory   The target factory on which to set the property.
+     * @param property The name of the property to set.
+     * @param value     The value of the property to set.
+     * @return {@code true} if the property was applied, {@code false} if the implementation rejected it.
+     */
+    static boolean trySetProperty(final XMLInputFactory factory, final String property, final Object value) {
+        try {
+            factory.setProperty(property, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
     }
 
     private JaxpSetters() {

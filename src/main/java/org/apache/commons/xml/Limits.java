@@ -19,6 +19,7 @@ package org.apache.commons.xml;
 import static org.apache.commons.xml.JaxpSetters.setAttribute;
 import static org.apache.commons.xml.JaxpSetters.setOptionalAttribute;
 import static org.apache.commons.xml.JaxpSetters.setProperty;
+import static org.apache.commons.xml.JaxpSetters.trySetProperty;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -236,40 +237,11 @@ final class Limits {
     }
 
     /**
-     * Best-effort application of the processing limits to a {@link DocumentBuilderFactory}, dispatched on the implementation.
-     *
-     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance. Every other implementation (the stock JDK and any
-     * future attribute-based parser) takes the JDK limit attributes. Neither path throws if the implementation declines a limit.</p>
-     *
-     * @param factory The target factory to modify.
-     */
-    static void tryApply(final DocumentBuilderFactory factory) {
-        if (EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY.equals(factory.getClass().getName())) {
-            // Install a fresh SecurityManager pinned to JDK 25 limits, replacing Xerces' built-in caps which are looser than even JDK 8.
-            final Object securityManager = newSecurityManager();
-            applyToXerces(securityManager);
-            setAttribute(factory, XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
-            return;
-        }
-        // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
-        JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
      * Sets every JDK-supported limit on a stock JDK {@link SchemaFactory}.
      *
      * @param factory The target factory to modify.
      */
     static void applyToJdkSchema(final SchemaFactory factory) {
-        JDK_LIMITS.forEach((name, supplier) -> setProperty(factory, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
-     * Sets every JDK-supported limit on the stock JDK's {@link XMLInputFactory}.
-     *
-     * @param factory The target factory to modify.
-     */
-    static void applyToJdkStax(final XMLInputFactory factory) {
         JDK_LIMITS.forEach((name, supplier) -> setProperty(factory, name, Integer.toString(supplier.getAsInt())));
     }
 
@@ -289,17 +261,6 @@ final class Limits {
      */
     static void applyToJdkXmlReader(final XMLReader reader) {
         JDK_LIMITS.forEach((name, supplier) -> setProperty(reader, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
-     * Sets every JDK-supported limit on a Woodstox {@link XMLInputFactory}.
-     *
-     * @param factory The target factory to modify.
-     */
-    static void applyToWoodstox(final XMLInputFactory factory) {
-        setProperty(factory, WSTX_MAX_ENTITY_COUNT, getEntityExpansionLimit());
-        setProperty(factory, WSTX_MAX_ATTRIBUTES_PER_ELEMENT, getElementAttributeLimit());
-        setProperty(factory, WSTX_MAX_ELEMENT_DEPTH, getMaxElementDepth());
     }
 
     /**
@@ -374,6 +335,41 @@ final class Limits {
         } catch (final NumberFormatException e) {
             return defaultValue;
         }
+    }
+
+    /**
+     * Best-effort application of the processing limits to a {@link DocumentBuilderFactory}, dispatched on the implementation.
+     *
+     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance. Every other implementation (the stock JDK and any
+     * future attribute-based parser) takes the JDK limit attributes. Neither path throws if the implementation declines a limit.</p>
+     *
+     * @param factory The target factory to modify.
+     */
+    static void tryApply(final DocumentBuilderFactory factory) {
+        if (EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY.equals(factory.getClass().getName())) {
+            // Install a fresh SecurityManager pinned to JDK 25 limits, replacing Xerces' built-in caps which are looser than even JDK 8.
+            final Object securityManager = newSecurityManager();
+            applyToXerces(securityManager);
+            setAttribute(factory, XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
+            return;
+        }
+        // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
+        JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
+    }
+
+    /**
+     * Best-effort application of the processing limits to an {@link XMLInputFactory}, regardless of implementation.
+     *
+     * <p>The JDK's Zephyr honours the JDK URL limit properties; Woodstox honours its own {@code com.ctc.wstx.*} properties. Each implementation rejects the
+     * other's, so both sets are applied best-effort and the rejected ones are skipped silently.</p>
+     *
+     * @param factory The target factory to modify.
+     */
+    static void tryApply(final XMLInputFactory factory) {
+        JDK_LIMITS.forEach((name, supplier) -> trySetProperty(factory, name, Integer.toString(supplier.getAsInt())));
+        trySetProperty(factory, WSTX_MAX_ENTITY_COUNT, getEntityExpansionLimit());
+        trySetProperty(factory, WSTX_MAX_ATTRIBUTES_PER_ELEMENT, getElementAttributeLimit());
+        trySetProperty(factory, WSTX_MAX_ELEMENT_DEPTH, getMaxElementDepth());
     }
 
     private Limits() {

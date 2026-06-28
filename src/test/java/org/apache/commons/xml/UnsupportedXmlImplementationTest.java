@@ -24,8 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 
 import org.junit.jupiter.api.Test;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 
 /**
  * Verifies that an implementation which does not honour the required secure-processing feature surfaces {@link IllegalStateException} with a message naming the
@@ -64,6 +68,27 @@ class UnsupportedXmlImplementationTest {
         }
     }
 
+    /**
+     * A stand-in SAX factory that rejects the secure-processing feature, like a JAXP implementation that does not recognize it.
+     */
+    public static final class FakeSAXParserFactory extends SAXParserFactory {
+
+        @Override
+        public SAXParser newSAXParser() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException {
+            throw new SAXNotRecognizedException("feature not recognized: " + name);
+        }
+
+        @Override
+        public boolean getFeature(final String name) throws SAXNotSupportedException {
+            throw new SAXNotSupportedException("feature not recognized: " + name);
+        }
+    }
+
     @Test
     void hardenRejectsUnsecurableFactory() {
         final IllegalStateException thrown = assertThrows(
@@ -71,6 +96,16 @@ class UnsupportedXmlImplementationTest {
                 () -> DocumentBuilderHardener.harden(new FakeDocumentBuilderFactory()));
         assertNotNull(thrown.getMessage());
         assertTrue(thrown.getMessage().contains(FakeDocumentBuilderFactory.class.getName()),
+                "Exception message must name the unsupported class: " + thrown.getMessage());
+    }
+
+    @Test
+    void hardenRejectsUnsecurableSaxFactory() {
+        final IllegalStateException thrown = assertThrows(
+                IllegalStateException.class,
+                () -> SAXParserHardener.harden(new FakeSAXParserFactory()));
+        assertNotNull(thrown.getMessage());
+        assertTrue(thrown.getMessage().contains(FakeSAXParserFactory.class.getName()),
                 "Exception message must name the unsupported class: " + thrown.getMessage());
     }
 }

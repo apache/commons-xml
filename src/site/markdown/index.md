@@ -63,7 +63,7 @@ stylesheet) is blocked, and DOCTYPE input is rejected wherever the underlying im
 
 ### Supported implementations
 
-Out of the box the library recognises the stock JDK JAXP implementations, Apache Xerces 2.x, Woodstox, and Saxon-HE. If
+Out of the box the library recognizes the stock JDK JAXP implementations, Apache Xerces 2.x, Woodstox, and Saxon-HE. If
 a factory resolves to an implementation not covered by any bundled hardening recipe, every `XmlFactories` method throws
 `IllegalStateException` with a message naming the unsupported class. Adding support for a new JAXP implementation
 requires a code change to this library.

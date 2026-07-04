@@ -65,7 +65,7 @@ final class Resolvers {
 
             @Override
             public InputSource getExternalSubset(final String name, final String baseURI) {
-                // Canonical EntityResolver2 "no synthetic subset" signal; matches the behaviour of an absent resolver. Blocking happens in resolveEntity below.
+                // Canonical EntityResolver2 "no synthetic subset" signal; matches the behavior of an absent resolver. Blocking happens in resolveEntity below.
                 return null;
             }
 

@@ -19,7 +19,7 @@ limitations under the License.
 
 **Sandbox component.** Apache Commons XML is part of the
 [Apache Commons Sandbox](https://commons.apache.org/sandbox/). It is a work in progress, has not been formally
-released, and its API, coordinates, and behaviour may change without notice. Do not rely on it in production.
+released, and its API, coordinates, and behavior may change without notice. Do not rely on it in production.
 
 Apache Commons XML provides secure-by-default JAXP factory creation,
 abstracting over implementation-specific XXE hardening differences between the

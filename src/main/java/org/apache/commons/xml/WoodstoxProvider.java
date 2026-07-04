@@ -40,7 +40,7 @@ import javax.xml.stream.XMLStreamException;
  *                 {@code ValidatingStreamReader.findDtdExtSubset}).</li>
  *             <li>{@code com.ctc.wstx.entityResolver} = {@link Resolvers.DenyAll#XML}: throws on declared external general entities.</li>
  *             <li>{@code com.ctc.wstx.undeclaredEntityResolver} = {@link Resolvers.IgnoreAll#XML}: silently drops references to entities the parser has not
- *                 seen declared, matching the SAX path's behaviour.</li>
+ *                 seen declared, matching the SAX path's behavior.</li>
  *         </ul>
  *     </li>
  * </ul>

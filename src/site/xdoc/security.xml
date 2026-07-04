@@ -21,11 +21,11 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/XDOC/2.0 http://maven.apache.org/xsd/xdoc-2.0.xsd">
   <properties>
-    <title>Apache Commons Security Reports</title>
+    <title>Apache Commons XML Security</title>
     <author email="dev@commons.apache.org">Apache Commons Team</author>
   </properties>
   <body>
-    <section name="About Security">
+    <section name="Apache Commons XML Security">
       <p>
         For information about reporting or asking questions about security, please see
         <a href="https://commons.apache.org/security.html">Apache Commons Security</a>.
@@ -43,6 +43,14 @@
       <p>If you have encountered an unlisted security vulnerability or other unexpected behavior that has security impact, or if the descriptions here are
         incomplete, please report them privately to the Apache Security Team. Thank you. 
       </p>
+    </section>
+    <section name="Security Model">
+       <p>
+         This section amends the <a href="https://commons.apache.org/security.html#Security_Model">Apache Commons security model</a> for this component.
+       </p>
+       <p>
+         Placeholder for the Apache Commons XML Security model amendment.
+       </p>
     </section>
     <section name="Security Vulnerabilities">
       <p>None.</p>

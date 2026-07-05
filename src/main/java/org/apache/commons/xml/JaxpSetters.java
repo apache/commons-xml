@@ -106,6 +106,14 @@ final class JaxpSetters {
         }
     }
 
+    static void setOptionalFeature(final XMLReader reader, final String feature, final boolean value) {
+        try {
+            reader.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this feature.
+        }
+    }
+
     static void setOptionalProperty(final XMLInputFactory factory, final String property, final Object value) {
         trySetProperty(factory, property, value);
     }
@@ -120,6 +128,23 @@ final class JaxpSetters {
 
     static void setProperty(final XMLReader reader, final String property, final Object value) {
         apply(reader, KIND_PROPERTY, property, () -> reader.setProperty(property, value));
+    }
+
+    /**
+     * Sets a property on an {@link XMLReader} and returns whether the implementation accepted it.
+     *
+     * @param reader   The target reader on which to set the property.
+     * @param property The name of the property to set.
+     * @param value    The value of the property to set.
+     * @return {@code true} if the property was applied, {@code false} if the implementation rejected it.
+     */
+    static boolean trySetProperty(final XMLReader reader, final String property, final Object value) {
+        try {
+            reader.setProperty(property, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
     }
 
     static void setProperty(final SchemaFactory factory, final String property, final Object value) {

@@ -24,11 +24,25 @@
   </bannerRight>
   <body>
     <menu name="Apache Commons XML">
-      <item name="Overview"        href="/index.html"/>
-      <item name="Javadoc"         href="/apidocs/index.html"/>
-      <item name="Security"        href="/security.html"/>
-      <item name="Issue Tracking"  href="/issue-tracking.html"/>
-      <item name="Mailing Lists"   href="/mail-lists.html"/>
+      <!-- Start: For all components. -->
+      <item name="About" href="index.html" />
+      <item name="Asking Questions" href="/mail-lists.html" />
+      <item name="Release History" href="/changes.html" />
+      <item name="Issue Tracking" href="/issue-management.html" />
+      <item name="Dependency Management" href="/dependency-info.html" />
+      <item name="Sources" href="/scm.html" />
+      <item name="Security">
+      	<item name="Security" href="security.html" />
+        <item name="Threat Model" href="threat_model.html" />
+      </item>
+      <item name="License" href="https://www.apache.org/licenses/LICENSE-2.0" />
+      <item name="Code of Conduct" href="https://www.apache.org/foundation/policies/conduct.html" />
+<!-- TODO      <item name="Download" href="https://commons.apache.org/sandbox/commons-xml/download_xml.cgi" />-->
+      <item name="Javadoc">
+        <item name="Javadoc Current" href="apidocs/index.html" />
+<!-- TODO       <item name="Javadoc Archive" href="https://javadoc.io/doc/org.apache.commons/commons-xml/" />-->
+      </item>
+      <!-- End: For all components. -->
     </menu>
     <menu ref="reports"/>
   </body>

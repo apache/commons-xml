@@ -18,4 +18,4 @@
 
 Read the [Apache Commons Security Page](https://commons.apache.org/security.html).
 
-Read the [Apache Commons XML threat model](https://github.com/apache/commons-xml/blob/main/src/site/markdown/threat_model.md).
+Read the [Apache Commons XML Threat Model](https://github.com/apache/commons-xml/blob/main/src/site/markdown/threat_model.md).

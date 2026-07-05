@@ -19,13 +19,11 @@ package org.apache.commons.xml;
 
 import static org.apache.commons.xml.JaxpSetters.setAttribute;
 import static org.apache.commons.xml.JaxpSetters.setFeature;
-import static org.apache.commons.xml.JaxpSetters.setProperty;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXTransformerFactory;
-import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPathFactory;
 
 import org.xml.sax.XMLReader;
@@ -73,19 +71,6 @@ final class StockJdkProvider {
         // Required: enables JDK XPath limits; XPathFactory has no property API for finer control.
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         return factory;
-    }
-
-    static SchemaFactory configure(final SchemaFactory factory) {
-        // Required: enables the JDK XMLSecurityManager limits.
-        setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Defense-in-depth: pin to JDK 25 limits so older JDKs do not fall back to looser secure values.
-        Limits.applyToJdkSchema(factory);
-        // Required: XMLSchemaLoader propagates this onto its inner SAX reader, otherwise it is overrideable by system properties
-        setProperty(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
-        // Required: gates xs:import/include/redefine fetches and xsi:schemaLocation.
-        setProperty(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-        // Required: routes every newSchema(Source[]) parse through an XmlFactories-hardened reader.
-        return new HardeningSchemaFactory(factory);
     }
 
     private StockJdkProvider() {

@@ -102,17 +102,6 @@ public final class XmlFactories {
         }
     }
 
-    private static SchemaFactory dispatch(final SchemaFactory factory) {
-        switch (factory.getClass().getName()) {
-            case "com.sun.org.apache.xerces.internal.jaxp.validation.XMLSchemaFactory":
-                return StockJdkProvider.configure(factory);
-            case "org.apache.xerces.jaxp.validation.XMLSchemaFactory":
-                return XercesProvider.configure(factory);
-            default:
-                throw noProvider(factory);
-        }
-    }
-
     /**
      * Rewrites a {@link Source} so that any SAX parsing it triggers runs through an {@link XmlFactories}-hardened {@link XMLReader}.
      *
@@ -192,11 +181,9 @@ public final class XmlFactories {
      * resulting {@link javax.xml.validation.Schema}.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying Schema implementation is not recognized by any bundled hardening recipe, or if the matching recipe
-     *         cannot apply its settings to it.
      */
     public static SchemaFactory newSchemaFactory() {
-        return dispatch(SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI));
+        return new HardeningSchemaFactory(SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI));
     }
 
     /**

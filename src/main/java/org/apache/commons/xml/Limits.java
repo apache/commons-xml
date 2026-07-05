@@ -18,7 +18,6 @@ package org.apache.commons.xml;
 
 import static org.apache.commons.xml.JaxpSetters.setAttribute;
 import static org.apache.commons.xml.JaxpSetters.setOptionalAttribute;
-import static org.apache.commons.xml.JaxpSetters.setProperty;
 import static org.apache.commons.xml.JaxpSetters.trySetProperty;
 
 import java.util.Collections;
@@ -29,7 +28,6 @@ import java.util.function.IntSupplier;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.validation.SchemaFactory;
 
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
@@ -136,6 +134,14 @@ final class Limits {
      */
     private static final int DEFAULT_TOTAL_ENTITY_SIZE_LIMIT = 100000;
     /**
+     * Class name of the external Apache Xerces {@link DocumentBuilderFactory}, whose limits live on a {@code SecurityManager} rather than JDK attributes.
+     */
+    private static final String EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY = "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl";
+    /**
+     * Class name of the external Apache Xerces {@link XMLReader}, whose limits live on a {@code SecurityManager} rather than JDK properties.
+     */
+    private static final String EXTERNAL_XERCES_SAX_READER = "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser";
+    /**
      * URL-form property name to current value, in a stable order, for every limit that the stock JDK's parsers accept. Iterated by every {@code applyToJdk*}
      * method so each JDK factory or parser instance ends up with the same set of limits applied.
      */
@@ -221,13 +227,9 @@ final class Limits {
      */
     private static final String WSTX_MAX_ENTITY_COUNT = "com.ctc.wstx.maxEntityCount";
     /**
-     * Class name of the external Apache Xerces {@link DocumentBuilderFactory}, whose limits live on a {@code SecurityManager} rather than JDK attributes.
+     * Xerces-specific property whose value is an {@code org.apache.xerces.util.SecurityManager} instance carrying processing-limit thresholds
      */
-    private static final String EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY = "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl";
-    /**
-     * Class name of the external Apache Xerces {@link XMLReader}, whose limits live on a {@code SecurityManager} rather than JDK properties.
-     */
-    private static final String EXTERNAL_XERCES_SAX_READER = "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser";
+    private static final String XERCES_SECURITY_MANAGER_PROPERTY = "http://apache.org/xml/properties/security-manager";
 
     static {
         final Map<String, IntSupplier> map = new LinkedHashMap<>();
@@ -243,45 +245,12 @@ final class Limits {
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link SchemaFactory}.
-     *
-     * @param factory The target factory to modify.
-     */
-    static void applyToJdkSchema(final SchemaFactory factory) {
-        JDK_LIMITS.forEach((name, supplier) -> setProperty(factory, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
      * Sets every JDK-supported limit on a stock JDK {@link TransformerFactory}.
      *
      * @param factory The target factory to modify.
      */
     static void applyToJdkTransformer(final TransformerFactory factory) {
         JDK_LIMITS.forEach((name, supplier) -> setAttribute(factory, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
-     * Best-effort application of the processing limits to an {@link XMLReader}, dispatched on the implementation.
-     *
-     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance reachable through the
-     * {@value XercesProvider#XERCES_SECURITY_MANAGER_PROPERTY} property. The stock JDK reader is itself a Xerces fork that exposes the same property, so a probe
-     * cannot tell the two apart; the external distribution is therefore matched by class name, and every other reader (the stock JDK, a Saxon-picked JDK reader,
-     * any future attribute-based parser) takes the JDK limit properties. Neither path throws if the reader declines a limit.</p>
-     *
-     * @param reader The target reader to modify.
-     */
-    static void tryApply(final XMLReader reader) {
-        if (EXTERNAL_XERCES_SAX_READER.equals(reader.getClass().getName())) {
-            try {
-                // External Xerces: tighten the SecurityManager it already installed under FSP to JDK 25 limits.
-                applyToXerces(reader.getProperty(XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY));
-            } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
-                throw new HardeningException("Failed to read Xerces security manager from XMLReader", e);
-            }
-            return;
-        }
-        // Pin the JDK limit properties to JDK 25 secure values; skip silently any property the reader does not recognize.
-        JDK_LIMITS.forEach((name, supplier) -> trySetProperty(reader, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**
@@ -299,14 +268,6 @@ final class Limits {
             clazz.getMethod("setMaxOccurNodeLimit", int.class).invoke(securityManager, getMaxOccurLimit());
         } catch (final ReflectiveOperationException ignore) {
             // Class on the classpath is not the expected Xerces SecurityManager; leave the limits at whatever defaults it carries.
-        }
-    }
-
-    private static Object newSecurityManager() {
-        try {
-            return Class.forName("org.apache.xerces.util.SecurityManager").getDeclaredConstructor().newInstance();
-        } catch (final ReflectiveOperationException e) {
-            throw new HardeningException("Failed to instantiate org.apache.xerces.util.SecurityManager; expected Xerces to be on the classpath", e);
         }
     }
 
@@ -346,6 +307,14 @@ final class Limits {
         return read(SP_TOTAL_ENTITY_SIZE_LIMIT, DEFAULT_TOTAL_ENTITY_SIZE_LIMIT);
     }
 
+    private static Object newSecurityManager() {
+        try {
+            return Class.forName("org.apache.xerces.util.SecurityManager").getDeclaredConstructor().newInstance();
+        } catch (final ReflectiveOperationException e) {
+            throw new HardeningException("Failed to instantiate org.apache.xerces.util.SecurityManager; expected Xerces to be on the classpath", e);
+        }
+    }
+
     private static int read(final String systemPropertyName, final int defaultValue) {
         final String raw = System.getProperty(systemPropertyName);
         if (raw == null || raw.isEmpty()) {
@@ -371,7 +340,7 @@ final class Limits {
             // Install a fresh SecurityManager pinned to JDK 25 limits, replacing Xerces' built-in caps which are looser than even JDK 8.
             final Object securityManager = newSecurityManager();
             applyToXerces(securityManager);
-            setAttribute(factory, XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
+            setAttribute(factory, XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
             return;
         }
         // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
@@ -391,6 +360,30 @@ final class Limits {
         trySetProperty(factory, WSTX_MAX_ENTITY_COUNT, getEntityExpansionLimit());
         trySetProperty(factory, WSTX_MAX_ATTRIBUTES_PER_ELEMENT, getElementAttributeLimit());
         trySetProperty(factory, WSTX_MAX_ELEMENT_DEPTH, getMaxElementDepth());
+    }
+
+    /**
+     * Best-effort application of the processing limits to an {@link XMLReader}, dispatched on the implementation.
+     *
+     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance reachable through the
+     * {@value #XERCES_SECURITY_MANAGER_PROPERTY} property. The stock JDK reader is itself a Xerces fork that exposes the same property, so a probe
+     * cannot tell the two apart; the external distribution is therefore matched by class name, and every other reader (the stock JDK, a Saxon-picked JDK reader,
+     * any future attribute-based parser) takes the JDK limit properties. Neither path throws if the reader declines a limit.</p>
+     *
+     * @param reader The target reader to modify.
+     */
+    static void tryApply(final XMLReader reader) {
+        if (EXTERNAL_XERCES_SAX_READER.equals(reader.getClass().getName())) {
+            try {
+                // External Xerces: tighten the SecurityManager it already installed under FSP to JDK 25 limits.
+                applyToXerces(reader.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
+            } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+                throw new HardeningException("Failed to read Xerces security manager from XMLReader", e);
+            }
+            return;
+        }
+        // Pin the JDK limit properties to JDK 25 secure values; skip silently any property the reader does not recognize.
+        JDK_LIMITS.forEach((name, supplier) -> trySetProperty(reader, name, Integer.toString(supplier.getAsInt())));
     }
 
     private Limits() {

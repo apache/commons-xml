@@ -32,37 +32,12 @@ limitations under the License.
   <description>Apache Commons XML provides secure-by-default JAXP factory creation, abstracting over
     implementation-specific XXE hardening differences between the stock JDK and external JAXP implementations
     (Android, Apache Xalan, Apache Xerces, Woodstox, Saxon-HE).</description>
-
-  <developers>
-    <developer>
-      <id>ppkarwasz</id>
-      <name>Piotr P. Karwasz</name>
-      <email>pkarwasz-pom@apache.org</email>
-    </developer>
-    <developer>
-      <id>ggregory</id>
-      <name>Gary Gregory</name>
-      <email>ggregory at apache.org</email>
-      <url>https://www.garygregory.com</url>
-      <organization>The Apache Software Foundation</organization>
-      <organizationUrl>https://www.apache.org/</organizationUrl>
-      <roles>
-        <role>PMC Member</role>
-      </roles>
-      <timezone>America/New_York</timezone>
-      <properties>
-        <picUrl>https://people.apache.org/~ggregory/img/garydgregory80.png</picUrl>
-      </properties>
-    </developer>
-  </developers>
-
   <scm>
     <connection>scm:git:https://gitbox.apache.org/repos/asf/commons-xml.git</connection>
     <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/commons-xml.git</developerConnection>
     <url>https://gitbox.apache.org/repos/asf?p=commons-xml.git</url>
     <tag>rel/commons-xml-${project.version}</tag>
   </scm>
-
   <properties>
     <!-- Release-related properties -->
     <commons.release.version>0.1.0</commons.release.version>
@@ -474,4 +449,26 @@ limitations under the License.
       </build>
     </profile>
   </profiles>
+  <developers>
+    <developer>
+      <id>ppkarwasz</id>
+      <name>Piotr P. Karwasz</name>
+      <email>pkarwasz-pom@apache.org</email>
+    </developer>
+    <developer>
+      <id>ggregory</id>
+      <name>Gary Gregory</name>
+      <email>ggregory at apache.org</email>
+      <url>https://www.garygregory.com</url>
+      <organization>The Apache Software Foundation</organization>
+      <organizationUrl>https://www.apache.org/</organizationUrl>
+      <roles>
+        <role>PMC Member</role>
+      </roles>
+      <timezone>America/New_York</timezone>
+      <properties>
+        <picUrl>https://people.apache.org/~ggregory/img/garydgregory80.png</picUrl>
+      </properties>
+    </developer>
+  </developers>
 </project>

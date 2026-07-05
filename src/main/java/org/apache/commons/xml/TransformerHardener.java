@@ -43,8 +43,6 @@ import javax.xml.transform.sax.SAXTransformerFactory;
  *         hardening surface is reachable only through a vendor API.</li>
  *     <li><strong>FSP</strong> ({@link XMLConstants#FEATURE_SECURE_PROCESSING}): required. On XSLTC it enables the runtime evaluator limits; on Xalan it disables
  *         reflection-based extension functions.</li>
- *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(TransformerFactory)}. XSLTC honors the JDK attribute limits; Xalan ignores them
- *         (its caps come from FSP).</li>
  *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong> (set to {@code ""}): required on XSLTC. XSLTC copies this factory attribute onto the reader that parses the
  *         stylesheet ({@code Util.getInputSource}), overwriting the {@code ACCESS_EXTERNAL_DTD} the wrapper's hardened reader had already set; without it a
  *         permissive default re-opens the external-DTD/entity channel during stylesheet compilation. Xalan rejects the attribute (best-effort, ignored) and closes
@@ -78,8 +76,6 @@ final class TransformerHardener {
         }
         // Required: enables secure processing (XSLTC runtime limits; Xalan's extension-function block).
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Best-effort: JDK's XSLTC honors the JDK attribute limits, pinning them to JDK 25 secure values; Xalan ignores them.
-        Limits.tryApply(factory);
         // Required on JDK's XSLTC: it copies this factory attribute onto the reader that parses the stylesheet (Util.getInputSource).
         // A permissive default here would re-open the external-DTD/entity channel.
         // Xalan rejects the attribute and blocks that channel through a deny-all resolver instead.

@@ -53,10 +53,6 @@ final class JaxpSetters {
         }
     }
 
-    static void setAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
-    }
-
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
         apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
@@ -87,10 +83,6 @@ final class JaxpSetters {
 
     static void setFeature(final XMLReader reader, final String feature, final boolean value) {
         apply(reader, KIND_FEATURE, feature, () -> reader.setFeature(feature, value));
-    }
-
-    static void setOptionalAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        trySetAttribute(factory, attribute, value);
     }
 
     static void setOptionalAttribute(final TransformerFactory factory, final String attribute, final Object value) {

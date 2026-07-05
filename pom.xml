@@ -16,7 +16,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache.commons</groupId>
@@ -131,7 +132,7 @@ limitations under the License.
             <!-- Later:
             <includeTestSourceDirectory>true</includeTestSourceDirectory> -->
           </configuration>
-        </plugin>      
+        </plugin>
         <plugin>
           <groupId>com.github.spotbugs</groupId>
           <artifactId>spotbugs-maven-plugin</artifactId>
@@ -189,7 +190,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-saxon</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/saxon</reportsDirectory>
               <!-- Saxon contributes TrAX (transformer + stylesheet) and XPath; xpath3 covers Saxon-only XPath 3.1 functions. -->
@@ -198,7 +201,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-saxon-xerces</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/saxon-xerces</reportsDirectory>
               <!-- Same groups as test-saxon, but with Apache Xerces also visible to Saxon's SAX-provider lookup. -->
@@ -214,7 +219,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-stockjdk</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
               <!-- Run every tagged and untagged test except xpath3, which needs Saxon on the classpath. -->
@@ -226,7 +233,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-woodstox</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/woodstox</reportsDirectory>
               <!-- Woodstox only contributes StAX. -->
@@ -245,7 +254,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-xalan</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xalan</reportsDirectory>
               <!-- Xalan contributes TrAX and XPath. -->
@@ -269,7 +280,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-xalan-xerces</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xalan-xerces</reportsDirectory>
               <!-- Same groups as test-xalan, but with Apache Xerces winning Xalan's internal SAX-provider lookup. -->
@@ -298,7 +311,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-xerces</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xerces</reportsDirectory>
               <!-- Xerces only contributes DOM/SAX/Schema; the rest is JDK-bundled and already covered by test-stockjdk. -->
@@ -403,7 +418,7 @@ limitations under the License.
       </plugin>
     </plugins>
   </reporting>
- <profiles>
+  <profiles>
     <!--
       Regression guard for the generated OSGi and JPMS descriptors.
       The JPMS test requires JDK 9+

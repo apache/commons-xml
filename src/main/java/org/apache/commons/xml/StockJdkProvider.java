@@ -17,13 +17,10 @@
 
 package org.apache.commons.xml;
 
-import static org.apache.commons.xml.JaxpSetters.setAttribute;
 import static org.apache.commons.xml.JaxpSetters.setFeature;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.SAXParserFactory;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.xpath.XPathFactory;
 
 import org.xml.sax.XMLReader;
@@ -51,19 +48,6 @@ final class StockJdkProvider {
      * {@code jdk.xml.overrideDefaultParser}: pin to the JDK's bundled SAX parser; defense-in-depth against a sysprop swap to a third-party parser.
      */
     private static final String FEATURE_OVERRIDE_DEFAULT_PARSER = "jdk.xml.overrideDefaultParser";
-
-    static TransformerFactory configure(final TransformerFactory factory) {
-        // Required: enables XSLTC's runtime evaluator limits (entity expansion, attribute count, element/name depth).
-        setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Defense-in-depth: pin to JDK 25 limits so older JDKs do not fall back to looser secure values.
-        Limits.applyToJdkTransformer(factory);
-        // Required: XSLTC's compile path (Util.getInputSource) propagates the factory's ACCESS_EXTERNAL_DTD onto the SAXSource's reader.
-        setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
-        // Required: Prevents resolution of `xsl:import`, `xsl:include` and `document()`.
-        setAttribute(factory, XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
-        // Required: XSLTC's source-document parsing path provisions its own SAX reader if the source does not have its own parser.
-        return new HardeningTransformerFactory((SAXTransformerFactory) factory);
-    }
 
     static XPathFactory configure(final XPathFactory factory) {
         // Defense-in-depth: pin to the JDK's bundled SAX parser; see FEATURE_OVERRIDE_DEFAULT_PARSER.

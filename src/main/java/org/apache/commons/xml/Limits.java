@@ -245,15 +245,6 @@ final class Limits {
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link TransformerFactory}.
-     *
-     * @param factory The target factory to modify.
-     */
-    static void applyToJdkTransformer(final TransformerFactory factory) {
-        JDK_LIMITS.forEach((name, supplier) -> setAttribute(factory, name, Integer.toString(supplier.getAsInt())));
-    }
-
-    /**
      * Sets every JDK-supported limit on a Xerces {@code org.apache.xerces.util.SecurityManager}.
      *
      * @param securityManager an instance of {@code org.apache.xerces.util.SecurityManager}; if {@code null} the call is a no-op.
@@ -344,6 +335,19 @@ final class Limits {
             return;
         }
         // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
+        JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
+    }
+
+    /**
+     * Best-effort application of the JDK processing limits to a {@link TransformerFactory}.
+     *
+     * <p>The stock JDK's XSLTC honours the JDK limit attributes, so this pins them to JDK 25 secure values; other implementations (Apache Xalan) reject the
+     * attributes and their caps come from {@link javax.xml.XMLConstants#FEATURE_SECURE_PROCESSING} instead. Neither path throws if the implementation declines a
+     * limit.</p>
+     *
+     * @param factory The target factory to modify.
+     */
+    static void tryApply(final TransformerFactory factory) {
         JDK_LIMITS.forEach((name, supplier) -> setOptionalAttribute(factory, name, Integer.toString(supplier.getAsInt())));
     }
 

@@ -73,22 +73,6 @@ import org.xml.sax.XMLReader;
  */
 public final class XmlFactories {
 
-    private static TransformerFactory dispatch(final TransformerFactory factory) {
-        switch (factory.getClass().getName()) {
-            case "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl":
-                return StockJdkProvider.configure(factory);
-            case "org.apache.xalan.processor.TransformerFactoryImpl":
-            case "org.apache.xalan.xsltc.trax.TransformerFactoryImpl":
-                return XalanProvider.configure(factory);
-            case "net.sf.saxon.TransformerFactoryImpl":
-            case "com.saxonica.config.ProfessionalTransformerFactory":
-            case "com.saxonica.config.EnterpriseTransformerFactory":
-                return SaxonProvider.configure(factory);
-            default:
-                throw noProvider(factory);
-        }
-    }
-
     private static XPathFactory dispatch(final XPathFactory factory) {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl":
@@ -196,11 +180,10 @@ public final class XmlFactories {
      * {@code Transformer.transform(Source, Result)} time.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying TrAX implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
-     *         apply its settings to it.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static TransformerFactory newTransformerFactory() {
-        return dispatch(TransformerFactory.newInstance());
+        return TransformerHardener.harden(TransformerFactory.newInstance());
     }
 
     /**

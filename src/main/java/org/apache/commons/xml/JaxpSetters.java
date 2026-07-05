@@ -57,10 +57,6 @@ final class JaxpSetters {
         apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
     }
 
-    static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
-        apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
-    }
-
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
         apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
@@ -95,6 +91,14 @@ final class JaxpSetters {
 
     static void setOptionalAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
         trySetAttribute(factory, attribute, value);
+    }
+
+    static void setOptionalAttribute(final TransformerFactory factory, final String attribute, final Object value) {
+        try {
+            factory.setAttribute(attribute, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this attribute.
+        }
     }
 
     static void setOptionalFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {

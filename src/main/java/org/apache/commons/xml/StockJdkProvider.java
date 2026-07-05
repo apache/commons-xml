@@ -22,7 +22,6 @@ import static org.apache.commons.xml.JaxpSetters.setFeature;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.SAXParserFactory;
-import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.xpath.XPathFactory;
@@ -40,16 +39,11 @@ import org.xml.sax.XMLReader;
  *         bundled SAX parser instead of {@link SAXParserFactory#newInstance()}, blocking a sysprop swap to a third-party parser. Defense-in-depth.</li>
  *     <li><strong>FSP</strong> ({@link XMLConstants#FEATURE_SECURE_PROCESSING}, set to {@code true}): switches the JDK's {@code XMLSecurityManager} into secure
  *         mode, which is what enables the JDK-side processing limits in the first place. Required.</li>
- *     <li><strong>{@code Limits.applyToJdk*}</strong>: required on {@link XMLInputFactory} (it rejects FSP); elsewhere defense-in-depth, pinning the limits to
- *         JDK 25 secure values so older JDKs do not fall back to looser defaults.</li>
+ *     <li><strong>{@code Limits.applyToJdk*}</strong>: defense-in-depth, pinning the limits to JDK 25 secure values so older JDKs do not fall back to looser
+ *         defaults.</li>
  *     <li><strong>{@code ACCESS_EXTERNAL_*}</strong>: already the FSP-secure default but set to {@code ""} explicitly so a sysprop ({@code
- *         javax.xml.accessExternal*}) cannot loosen them. {@link XMLInputFactory} has no equivalent property, so the StAX path pairs Zephyr's
- *         {@value #ZEPHYR_IGNORE_EXTERNAL_DTD} property (skip the external DTD subset, lets DOCTYPE-only documents parse) with {@link Resolvers.DenyAll#XML}
- *         (throw on declared external entity references). Undeclared general-entity references are silently dropped: Zephyr does not raise a fatal error
- *         when the subset that would have declared the entity was skipped, so no extra hook is needed.</li>
+ *         javax.xml.accessExternal*}) cannot loosen them.</li>
  * </ul>
- *
- * <p>SAX hardening is not handled here: it is capability-driven across all implementations and lives in {@link SAXParserHardener}.</p>
  */
 final class StockJdkProvider {
 
@@ -57,21 +51,6 @@ final class StockJdkProvider {
      * {@code jdk.xml.overrideDefaultParser}: pin to the JDK's bundled SAX parser; defense-in-depth against a sysprop swap to a third-party parser.
      */
     private static final String FEATURE_OVERRIDE_DEFAULT_PARSER = "jdk.xml.overrideDefaultParser";
-
-    /**
-     * Zephyr property: skip external DTD subset loading entirely (StAX equivalent of the Xerces {@code load-external-dtd} feature {@code = false}).
-     */
-    private static final String ZEPHYR_IGNORE_EXTERNAL_DTD = "http://java.sun.com/xml/stream/properties/ignore-external-dtd";
-
-    static XMLInputFactory configure(final XMLInputFactory factory) {
-        // Required: XMLInputFactory rejects FSP, so the limits below are the only way to enable JDK XMLSecurityManager caps on the StAX path.
-        Limits.applyToJdkStax(factory);
-        // Let DOCTYPE-only documents parse silently: Zephyr's StAX equivalent of XERCES_LOAD_EXTERNAL_DTD=false skips the external DTD subset entirely.
-        factory.setProperty(ZEPHYR_IGNORE_EXTERNAL_DTD, true);
-        // Required: XMLInputFactory has no ACCESS_EXTERNAL_* either; an explicit deny-all resolver is the only way to block external entity fetching.
-        factory.setXMLResolver(Resolvers.DenyAll.XML);
-        return factory;
-    }
 
     static TransformerFactory configure(final TransformerFactory factory) {
         // Required: enables XSLTC's runtime evaluator limits (entity expansion, attribute count, element/name depth).

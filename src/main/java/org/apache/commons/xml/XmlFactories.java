@@ -73,17 +73,6 @@ import org.xml.sax.XMLReader;
  */
 public final class XmlFactories {
 
-    private static XMLInputFactory dispatch(final XMLInputFactory factory) {
-        switch (factory.getClass().getName()) {
-            case "com.sun.xml.internal.stream.XMLInputFactoryImpl":
-                return StockJdkProvider.configure(factory);
-            case "com.ctc.wstx.stax.WstxInputFactory":
-                return WoodstoxProvider.configure(factory);
-            default:
-                throw noProvider(factory);
-        }
-    }
-
     private static TransformerFactory dispatch(final TransformerFactory factory) {
         switch (factory.getClass().getName()) {
             case "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl":
@@ -220,11 +209,10 @@ public final class XmlFactories {
      * <p>The three universal guarantees on {@link XmlFactories} apply; StAX exposes no additional vectors beyond them.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying StAX implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
-     *         apply its settings to it.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static XMLInputFactory newXMLInputFactory() {
-        return dispatch(XMLInputFactory.newInstance());
+        return StaxHardener.harden(XMLInputFactory.newInstance());
     }
 
     /**

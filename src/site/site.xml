@@ -31,7 +31,7 @@
       <item name="Issue Tracking" href="/issue-management.html" />
       <item name="Dependency Management" href="/dependency-info.html" />
       <item name="Sources" href="/scm.html" />
-      <item name="Security" href="security.html">
+      <item name="Security">
       	<item name="Security" href="security.html" />
         <item name="Threat Model" href="threat_model.html" />
       </item>

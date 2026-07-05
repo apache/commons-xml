@@ -14,7 +14,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-# Apache Commons XML Security Policy
+# Apache Commons XML Threat Model
 
 ## Introduction
 

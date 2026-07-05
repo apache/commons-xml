@@ -19,6 +19,7 @@ package org.apache.commons.xml;
 import static org.apache.commons.xml.JaxpSetters.setAttribute;
 import static org.apache.commons.xml.JaxpSetters.setOptionalAttribute;
 import static org.apache.commons.xml.JaxpSetters.setProperty;
+import static org.apache.commons.xml.JaxpSetters.trySetProperty;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -29,6 +30,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
 
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 
 /**
@@ -220,6 +223,14 @@ final class Limits {
      * Class name of the external Apache Xerces {@link DocumentBuilderFactory}, whose limits live on a {@code SecurityManager} rather than JDK attributes.
      */
     private static final String EXTERNAL_XERCES_DOCUMENT_BUILDER_FACTORY = "org.apache.xerces.jaxp.DocumentBuilderFactoryImpl";
+    /**
+     * Class name of the external Apache Xerces {@link XMLReader}, whose limits live on a {@code SecurityManager} rather than JDK properties.
+     */
+    private static final String EXTERNAL_XERCES_SAX_READER = "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser";
+    /**
+     * Xerces-specific property whose value is an {@code org.apache.xerces.util.SecurityManager} instance carrying processing-limit thresholds
+     */
+    private static final String XERCES_SECURITY_MANAGER_PROPERTY = "http://apache.org/xml/properties/security-manager";
 
     static {
         final Map<String, IntSupplier> map = new LinkedHashMap<>();
@@ -247,7 +258,7 @@ final class Limits {
             // Install a fresh SecurityManager pinned to JDK 25 limits, replacing Xerces' built-in caps which are looser than even JDK 8.
             final Object securityManager = newSecurityManager();
             applyToXerces(securityManager);
-            setAttribute(factory, XercesProvider.XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
+            setAttribute(factory, XERCES_SECURITY_MANAGER_PROPERTY, securityManager);
             return;
         }
         // Pin the JDK attribute limits to JDK 25 secure values; skip silently any attribute the implementation does not recognize.
@@ -273,12 +284,27 @@ final class Limits {
     }
 
     /**
-     * Sets every JDK-supported limit on a stock JDK {@link XMLReader}.
+     * Best-effort application of the processing limits to an {@link XMLReader}, dispatched on the implementation.
+     *
+     * <p>External Xerces carries its limits on an {@code org.apache.xerces.util.SecurityManager} instance reachable through the
+     * {@value #XERCES_SECURITY_MANAGER_PROPERTY} property. The stock JDK reader is itself a Xerces fork that exposes the same property, so a probe
+     * cannot tell the two apart; the external distribution is therefore matched by class name, and every other reader (the stock JDK, a Saxon-picked JDK reader,
+     * any future attribute-based parser) takes the JDK limit properties. Neither path throws if the reader declines a limit.</p>
      *
      * @param reader The target reader to modify.
      */
-    static void applyToJdkXmlReader(final XMLReader reader) {
-        JDK_LIMITS.forEach((name, supplier) -> setProperty(reader, name, Integer.toString(supplier.getAsInt())));
+    static void tryApply(final XMLReader reader) {
+        if (EXTERNAL_XERCES_SAX_READER.equals(reader.getClass().getName())) {
+            try {
+                // External Xerces: tighten the SecurityManager it already installed under FSP to JDK 25 limits.
+                applyToXerces(reader.getProperty(XERCES_SECURITY_MANAGER_PROPERTY));
+            } catch (final SAXNotRecognizedException | SAXNotSupportedException e) {
+                throw new HardeningException("Failed to read Xerces security manager from XMLReader", e);
+            }
+            return;
+        }
+        // Pin the JDK limit properties to JDK 25 secure values; skip silently any property the reader does not recognize.
+        JDK_LIMITS.forEach((name, supplier) -> trySetProperty(reader, name, Integer.toString(supplier.getAsInt())));
     }
 
     /**

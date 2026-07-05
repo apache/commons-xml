@@ -19,7 +19,6 @@ package org.apache.commons.xml;
 
 import static org.apache.commons.xml.JaxpSetters.setAttribute;
 import static org.apache.commons.xml.JaxpSetters.setFeature;
-import static org.apache.commons.xml.JaxpSetters.setProperty;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.SAXParserFactory;
@@ -50,8 +49,7 @@ import org.xml.sax.XMLReader;
  *         when the subset that would have declared the entity was skipped, so no extra hook is needed.</li>
  * </ul>
  *
- * <p>SAX hardening lives in {@link #configure(XMLReader)}: {@link SAXParserFactory} has no property API, so the {@link HardeningSAXParserFactory} wrapper
- * funnels each produced parser's {@link XMLReader} through that method.</p>
+ * <p>SAX hardening is not handled here: it is capability-driven across all implementations and lives in {@link SAXParserHardener}.</p>
  */
 final class StockJdkProvider {
 
@@ -61,36 +59,9 @@ final class StockJdkProvider {
     private static final String FEATURE_OVERRIDE_DEFAULT_PARSER = "jdk.xml.overrideDefaultParser";
 
     /**
-     * Xerces feature: load the external DTD subset for non-validating parsers.
-     */
-    private static final String XERCES_LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
-
-    /**
-     * Zephyr property: skip external DTD subset loading entirely (StAX equivalent of {@link #XERCES_LOAD_EXTERNAL_DTD} {@code = false}).
+     * Zephyr property: skip external DTD subset loading entirely (StAX equivalent of the Xerces {@code load-external-dtd} feature {@code = false}).
      */
     private static final String ZEPHYR_IGNORE_EXTERNAL_DTD = "http://java.sun.com/xml/stream/properties/ignore-external-dtd";
-
-    static SAXParserFactory configure(final SAXParserFactory factory) {
-        // Required: enables the JDK XMLSecurityManager limits.
-        setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Useful: namespaces should be recognized by default
-        factory.setNamespaceAware(true);
-        // The remaining hardening (limits, ACCESS_EXTERNAL_*) lives in the XMLReader configure() because SAXParserFactory has no property API.
-        return new HardeningSAXParserFactory(factory, StockJdkProvider::configure);
-    }
-
-    static XMLReader configure(final XMLReader reader) {
-        // Required: enables the JDK XMLSecurityManager limits on a raw reader (e.g. one Saxon picked).
-        setFeature(reader, XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        // Let DOCTYPE-only documents parse silently without SSRF: skip the external DTD subset on non-validating parsers.
-        setFeature(reader, XERCES_LOAD_EXTERNAL_DTD, false);
-        // Defense-in-depth: pin to JDK 25 limits so older JDKs do not fall back to looser secure values.
-        Limits.applyToJdkXmlReader(reader);
-        // Defense-in-depth: already FSP-secure defaults, set explicitly so they are not relaxed via system property.
-        setProperty(reader, XMLConstants.ACCESS_EXTERNAL_DTD, "");
-        setProperty(reader, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-        return reader;
-    }
 
     static XMLInputFactory configure(final XMLInputFactory factory) {
         // Required: XMLInputFactory rejects FSP, so the limits below are the only way to enable JDK XMLSecurityManager caps on the StAX path.

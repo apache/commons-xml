@@ -73,19 +73,6 @@ import org.xml.sax.XMLReader;
  */
 public final class XmlFactories {
 
-    private static SAXParserFactory dispatch(final SAXParserFactory factory) {
-        switch (factory.getClass().getName()) {
-            case "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl":
-                return StockJdkProvider.configure(factory);
-            case "org.apache.harmony.xml.parsers.SAXParserFactoryImpl":
-                return AndroidProvider.configure(factory);
-            case "org.apache.xerces.jaxp.SAXParserFactoryImpl":
-                return XercesProvider.configure(factory);
-            default:
-                throw noProvider(factory);
-        }
-    }
-
     private static XMLInputFactory dispatch(final XMLInputFactory factory) {
         switch (factory.getClass().getName()) {
             case "com.sun.xml.internal.stream.XMLInputFactoryImpl":
@@ -131,6 +118,8 @@ public final class XmlFactories {
      *
      * <p>Only {@link StreamSource} and {@link SAXSource} without a reader are enriched with a hardened reader. Other kinds of sources are returned as-is.</p>
      *
+     * <p>The reader is namespace-aware.</p>
+     *
      * @param source the source to harden; never {@code null}.
      * @return a hardened source.
      * @throws TransformerConfigurationException if a hardened reader cannot be obtained.
@@ -138,7 +127,9 @@ public final class XmlFactories {
     public static Source harden(final Source source) throws TransformerConfigurationException {
         if (source instanceof StreamSource || source instanceof SAXSource && ((SAXSource) source).getXMLReader() == null) {
             try {
-                final XMLReader reader = newSAXParserFactory().newSAXParser().getXMLReader();
+                final SAXParserFactory factory = newSAXParserFactory();
+                factory.setNamespaceAware(true);
+                final XMLReader reader = factory.newSAXParser().getXMLReader();
                 final InputSource inputSource = SAXSource.sourceToInputSource(source);
                 return inputSource == null ? source : new SAXSource(reader, inputSource);
             } catch (final ParserConfigurationException | SAXException e) {
@@ -153,21 +144,10 @@ public final class XmlFactories {
      *
      * @param reader the reader to harden; never {@code null}.
      * @return a hardened reader.
-     * @throws IllegalStateException if the reader's concrete class is not recognized by any bundled hardening recipe, or if the matching recipe cannot apply
-     *         its settings to it.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static XMLReader harden(final XMLReader reader) {
-        switch (reader.getClass().getName()) {
-            case "com.sun.org.apache.xerces.internal.jaxp.SAXParserImpl$JAXPSAXParser":
-                return StockJdkProvider.configure(reader);
-            case "org.apache.harmony.xml.ExpatReader":
-            case "org.apache.commons.xml.AndroidProvider$GuardedXMLReader":
-                return AndroidProvider.configure(reader);
-            case "org.apache.xerces.jaxp.SAXParserImpl$JAXPSAXParser":
-                return XercesProvider.configure(reader);
-            default:
-                throw noProvider(reader);
-        }
+        return SAXParserHardener.hardenReader(reader);
     }
 
     /**
@@ -192,11 +172,10 @@ public final class XmlFactories {
      * an {@code xi:include} element fails.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying JAXP implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
-     *         apply its settings to it.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static SAXParserFactory newSAXParserFactory() {
-        return dispatch(SAXParserFactory.newInstance());
+        return SAXParserHardener.harden(SAXParserFactory.newInstance());
     }
 
     /**

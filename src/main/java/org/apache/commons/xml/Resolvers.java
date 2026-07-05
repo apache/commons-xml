@@ -65,7 +65,7 @@ final class Resolvers {
 
             @Override
             public InputSource getExternalSubset(final String name, final String baseURI) {
-                // Canonical EntityResolver2 "no synthetic subset" signal; matches the behaviour of an absent resolver. Blocking happens in resolveEntity below.
+                // Canonical EntityResolver2 "no synthetic subset" signal; matches the behavior of an absent resolver. Blocking happens in resolveEntity below.
                 return null;
             }
 
@@ -113,8 +113,7 @@ final class Resolvers {
     /**
      * Returns an empty input for every external resource lookup so the parse can continue without replacement content.
      *
-     * <p>Only an {@link XMLResolver} flavour is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use the deny-all hooks plus
-     * {@link AndroidProvider}'s subset-aware resolver where needed.</p>
+     * <p>Only an {@link XMLResolver} flavour is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use the deny-all hooks.</p>
      */
     static final class IgnoreAll {
 

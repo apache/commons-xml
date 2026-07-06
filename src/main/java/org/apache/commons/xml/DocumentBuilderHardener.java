@@ -24,7 +24,6 @@ import static org.apache.commons.xml.JaxpSetters.trySetAttribute;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.EntityResolver;
 
@@ -42,29 +41,11 @@ import org.xml.sax.EntityResolver;
  *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(DocumentBuilderFactory)}, which adapts to the JDK attribute limits or Xerces'
  *         {@code SecurityManager} as appropriate.</li>
  *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong>: the dividing capability. Implementations that honour it (the JDK-internal Xerces) block external fetches
- *         through the JAXP 1.5 properties and are returned as-is. Implementations that reject it (the external Xerces distribution) are wrapped so a deny-all
- *         {@link EntityResolver} is installed on every {@link DocumentBuilder} produced.</li>
+ *         through the JAXP 1.5 properties and are returned as-is. Implementations that reject it (the external Xerces distribution) are wrapped in a
+ *         {@link HardeningDocumentBuilderFactory} so a deny-all {@link EntityResolver} floor is installed on every {@link DocumentBuilder} produced.</li>
  * </ul>
  */
 final class DocumentBuilderHardener {
-
-    /**
-     * Wrapper that keeps a deny-all {@link EntityResolver} floor on every {@link DocumentBuilder} produced.
-     *
-     * <p>Required for implementations that do not honour JAXP 1.5 {@code ACCESS_EXTERNAL_*} (the external Xerces distribution): the factory carries no resolver
-     * of its own, so the floor is installed on each builder via a {@link HardeningDocumentBuilder}, which a caller-set resolver cannot replace.</p>
-     */
-    private static final class HardeningDocumentBuilderFactory extends DelegatingDocumentBuilderFactory {
-
-        HardeningDocumentBuilderFactory(final DocumentBuilderFactory delegate) {
-            super(delegate);
-        }
-
-        @Override
-        public DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
-            return new HardeningDocumentBuilder(super.newDocumentBuilder());
-        }
-    }
 
     /** Class name of Android's Harmony-based {@link DocumentBuilderFactory}, which exposes no hardening surface. */
     private static final String ANDROID_DOCUMENT_BUILDER_FACTORY = "org.apache.harmony.xml.parsers.DocumentBuilderFactoryImpl";

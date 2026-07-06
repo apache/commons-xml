@@ -790,7 +790,7 @@ final class AttackTestSupport {
     /**
      * Builds a {@link DocumentBuilder} from {@code factory} with {@link #STRICT_REPORTER} installed as its error handler.
      */
-    private static DocumentBuilder strictDocumentBuilder(final DocumentBuilderFactory factory) throws ParserConfigurationException {
+    static DocumentBuilder strictDocumentBuilder(final DocumentBuilderFactory factory) throws ParserConfigurationException {
         final DocumentBuilder builder = factory.newDocumentBuilder();
         builder.setErrorHandler(STRICT_REPORTER);
         return builder;

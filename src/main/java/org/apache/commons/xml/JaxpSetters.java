@@ -117,6 +117,14 @@ final class JaxpSetters {
         }
     }
 
+    static void setOptionalFeature(final XPathFactory factory, final String feature, final boolean value) {
+        try {
+            factory.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this feature.
+        }
+    }
+
     static void setOptionalProperty(final XMLInputFactory factory, final String property, final Object value) {
         trySetProperty(factory, property, value);
     }

@@ -73,19 +73,6 @@ import org.xml.sax.XMLReader;
  */
 public final class XmlFactories {
 
-    private static XPathFactory dispatch(final XPathFactory factory) {
-        switch (factory.getClass().getName()) {
-            case "com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl":
-                return StockJdkProvider.configure(factory);
-            case "org.apache.xpath.jaxp.XPathFactoryImpl":
-                return XalanProvider.configure(factory);
-            case "net.sf.saxon.xpath.XPathFactoryImpl":
-                return SaxonProvider.configure(factory);
-            default:
-                throw noProvider(factory);
-        }
-    }
-
     /**
      * Rewrites a {@link Source} so that any SAX parsing it triggers runs through an {@link XmlFactories}-hardened {@link XMLReader}.
      *
@@ -205,15 +192,10 @@ public final class XmlFactories {
      * {@code unparsed-text()}) are not resolved.</p>
      *
      * @return a hardened factory.
-     * @throws IllegalStateException if the underlying XPath implementation is not recognized by any bundled hardening recipe, or if the matching recipe cannot
-     *         apply its settings to it.
+     * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     public static XPathFactory newXPathFactory() {
-        return dispatch(XPathFactory.newInstance());
-    }
-
-    private static HardeningException noProvider(final Object factory) {
-        return new HardeningException("No hardening recipe for JAXP factory class " + factory.getClass().getName());
+        return XPathHardener.harden(XPathFactory.newInstance());
     }
 
     private XmlFactories() {

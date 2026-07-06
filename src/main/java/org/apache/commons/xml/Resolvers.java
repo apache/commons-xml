@@ -26,6 +26,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 
+import org.w3c.dom.ls.LSInput;
 import org.w3c.dom.ls.LSResourceResolver;
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
@@ -174,6 +175,40 @@ final class Resolvers {
                 return ((EntityResolver2) delegate).resolveEntity(name, publicId, baseURI, systemId);
             }
             return delegate != null ? delegate.resolveEntity(publicId, systemId) : null;
+        }
+    }
+
+    /**
+     * {@link LSResourceResolver} floor: consults an optional caller-supplied resolver and denies (throws) whatever the caller does not resolve.
+     *
+     * <p>The schema-compile counterpart of {@link FallbackDenyResolver}. The hardened {@link javax.xml.validation.SchemaFactory}, {@link
+     * javax.xml.validation.Validator} and {@link javax.xml.validation.ValidatorHandler} wrappers install one of these and route a caller-set resolver through
+     * {@link #setDelegate} rather than letting it replace the floor. A caller opts a specific resource in by returning a non-{@code null} {@link LSInput};
+     * anything left unresolved is denied.</p>
+     */
+    static final class FallbackDenyLSResourceResolver implements LSResourceResolver {
+
+        private LSResourceResolver delegate;
+
+        FallbackDenyLSResourceResolver(final LSResourceResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        void setDelegate(final LSResourceResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        LSResourceResolver getDelegate() {
+            return delegate;
+        }
+
+        @Override
+        public LSInput resolveResource(final String type, final String namespaceURI, final String publicId, final String systemId, final String baseURI) {
+            final LSInput resolved = delegate != null ? delegate.resolveResource(type, namespaceURI, publicId, systemId, baseURI) : null;
+            if (resolved != null) {
+                return resolved;
+            }
+            throw new SecurityException(forbiddenMessage(type, namespaceURI, publicId, systemId, baseURI));
         }
     }
 

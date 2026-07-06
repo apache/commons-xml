@@ -23,6 +23,7 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.w3c.dom.ls.LSResourceResolver;
 import org.xml.sax.SAXException;
 
 /**
@@ -32,26 +33,40 @@ import org.xml.sax.SAXException;
  *
  * <p>Three layers cooperate:</p>
  * <ol>
- *   <li>{@link HardeningSchemaFactory} installs a deny-all {@link Resolvers.DenyAll#LS_RESOURCE} on the factory (blocking
+ *   <li>{@link HardeningSchemaFactory} installs a deny-all {@link Resolvers.FallbackDenyLSResourceResolver} floor on the factory (blocking
  *       {@code xs:import}/{@code xs:include}/{@code xs:redefine} at compile time) and rewrites the Source on every {@code newSchema(Source[])} entry point
  *       through {@link XmlFactories#harden(Source)}.</li>
- *   <li>{@link HardeningSchema} wraps every Validator/ValidatorHandler the inner Schema produces and re-installs the deny-all resolver on each (blocking
+ *   <li>{@link HardeningSchema} wraps every Validator/ValidatorHandler the inner Schema produces and re-installs the floor on each (blocking
  *       {@code xsi:schemaLocation} at validation time), since neither the JDK nor Xerces reliably propagates it through {@code Schema}.</li>
  *   <li>{@link HardeningValidator} rewrites the Source on every {@link Validator#validate(Source)} call.</li>
  * </ol>
  *
  * <p>The hardened reader supplied by {@link XmlFactories#harden(Source)} already carries {@code FEATURE_SECURE_PROCESSING} and the processing limits, so a
  * DOCTYPE, external entity or Billion Laughs payload in the schema or instance document is bounded there rather than on this factory. The JAXP 1.5
- * {@code ACCESS_EXTERNAL_*} properties are deliberately not set: the deny-all resolver already blocks the same fetches on every implementation, and the JDK 8
- * {@code SchemaFactory} has a bug whereby those properties keep blocking even when a caller's own resolver would grant the access, so leaving them unset lets a
- * caller re-enable specific lookups by swapping the resolver.</p>
+ * {@code ACCESS_EXTERNAL_*} properties are deliberately not set: the resolver floor already blocks the same fetches on every implementation, and the JDK 8
+ * {@code SchemaFactory} has a bug whereby those properties keep blocking even when a caller's own resolver would grant the access. The floor is a non-removable
+ * lower bound: a caller-set {@link LSResourceResolver} is routed through it (opting a specific lookup in by returning a non-{@code null} result) rather than
+ * replacing it, so hardening cannot be dropped by swapping the resolver.</p>
  */
 final class HardeningSchemaFactory extends DelegatingSchemaFactory {
+
+    private final Resolvers.FallbackDenyLSResourceResolver floor = new Resolvers.FallbackDenyLSResourceResolver(null);
 
     HardeningSchemaFactory(final SchemaFactory delegate) {
         super(delegate);
         // Compile-time block for xs:import/include/redefine; the wrappers carry the rest (per-product resolver, source rewriting, limits via the reader).
-        delegate.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
+        delegate.setResourceResolver(floor);
+    }
+
+    @Override
+    public void setResourceResolver(final LSResourceResolver resourceResolver) {
+        // Route a caller resolver through the floor instead of replacing it, so the deny-all lower bound cannot be removed.
+        floor.setDelegate(resourceResolver);
+    }
+
+    @Override
+    public LSResourceResolver getResourceResolver() {
+        return floor.getDelegate();
     }
 
     @Override

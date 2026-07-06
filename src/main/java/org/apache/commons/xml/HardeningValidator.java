@@ -32,18 +32,20 @@ import org.xml.sax.SAXNotSupportedException;
 
 /**
  * {@link Validator} wrapper that rewrites the Source on every {@link Validator#validate(Source)} and {@link Validator#validate(Source, Result)} call through
- * {@link XmlFactories#harden(Source)} before delegating, and installs a deny-all {@link LSResourceResolver} so {@code xsi:schemaLocation} is not resolved at
+ * {@link XmlFactories#harden(Source)} before delegating, and keeps a deny-all {@link LSResourceResolver} floor so {@code xsi:schemaLocation} is not resolved at
  * validation time.
  */
 final class HardeningValidator extends Validator {
 
     private final Validator delegate;
 
+    private final Resolvers.FallbackDenyLSResourceResolver floor = new Resolvers.FallbackDenyLSResourceResolver(null);
+
     HardeningValidator(final Validator delegate) {
         this.delegate = delegate;
-        // Block xsi:schemaLocation resolution; neither the JDK nor Xerces reliably propagates the factory's resolver to its Validators. A caller may re-enable
-        // specific lookups by setting their own resolver afterwards.
-        delegate.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
+        // Block xsi:schemaLocation resolution; neither the JDK nor Xerces reliably propagates the factory's resolver to its Validators. The floor is a
+        // non-removable lower bound: a caller opts specific lookups in by setting their own resolver, but cannot drop the deny-all block.
+        delegate.setResourceResolver(floor);
     }
 
     @Override
@@ -63,7 +65,7 @@ final class HardeningValidator extends Validator {
 
     @Override
     public LSResourceResolver getResourceResolver() {
-        return delegate.getResourceResolver();
+        return floor.getDelegate();
     }
 
     @Override
@@ -88,7 +90,8 @@ final class HardeningValidator extends Validator {
 
     @Override
     public void setResourceResolver(final LSResourceResolver resourceResolver) {
-        delegate.setResourceResolver(resourceResolver);
+        // Route a caller resolver through the floor instead of replacing it, so the deny-all lower bound cannot be removed.
+        floor.setDelegate(resourceResolver);
     }
 
     @Override

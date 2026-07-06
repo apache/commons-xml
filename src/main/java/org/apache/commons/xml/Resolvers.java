@@ -23,6 +23,7 @@ import java.io.InputStream;
 
 import javax.xml.stream.XMLResolver;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.transform.Source;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 
@@ -37,18 +38,16 @@ import org.xml.sax.ext.EntityResolver2;
 /**
  * Policy resolvers that fix the outcome of every external lookup.
  *
- * <p>Three members are exposed:</p>
+ * <p>Two flavours are exposed:</p>
  * <ul>
- *     <li>{@link DenyAll} refuses every lookup with an exception. Stateless singletons; use them on schema/XSLT compile paths and on StAX entity hooks where
- *         any external fetch is a hardening violation.</li>
- *     <li>{@link IgnoreAll} returns an empty input. Stateless singleton; use it on Woodstox's DTD-subset and undeclared-entity hooks where the parse must
- *         continue with no replacement content.</li>
- *     <li>{@link FallbackDenyResolver} denies the SAX/DOM entity channel but, unlike the others, is instantiated to wrap an optional caller-supplied resolver so
- *         a caller can opt specific resources in without removing the deny-all floor.</li>
+ *     <li><strong>Stateless singletons</strong> ({@link DenyAll}, {@link IgnoreAll}) fix the outcome unconditionally: {@link DenyAll} throws, {@link IgnoreAll}
+ *         returns an empty input. Used on StAX hooks where any external fetch is a hardening violation ({@link DenyAll#XML}) or must continue with no
+ *         replacement content ({@link IgnoreAll#XML}, Woodstox's DTD-subset and undeclared-entity hooks).</li>
+ *     <li><strong>Fallback-deny floors</strong> ({@link FallbackDenyResolver} for {@code EntityResolver}, {@link FallbackDenyLSResourceResolver} for
+ *         {@link LSResourceResolver}, {@link FallbackDenyURIResolver} for {@link URIResolver}) wrap an optional caller-supplied resolver: they consult it first
+ *         and deny whatever it does not resolve. The hardened wrappers install one and route a caller-set resolver through {@code setDelegate} rather than
+ *         replacing it, so a caller can opt specific resources in without removing the deny-all floor.</li>
  * </ul>
- *
- * <p>The {@link DenyAll} and {@link IgnoreAll} singletons cover the {@link LSResourceResolver}, {@link URIResolver} and {@link XMLResolver} channels. The
- * hardened wrappers keep those non-removable by routing a caller-set resolver through {@code setDelegate} on a floor instance rather than replacing it.</p>
  */
 final class Resolvers {
 
@@ -56,20 +55,6 @@ final class Resolvers {
      * Refuses every external resource lookup with an exception. All members are single-method resolvers exposed as lambdas.
      */
     static final class DenyAll {
-
-        /**
-         * Refuses every {@code xs:import}/{@code xs:include}/{@code xs:redefine} lookup at schema-compile time.
-         */
-        static final LSResourceResolver LS_RESOURCE = (type, namespaceURI, publicId, systemId, baseURI) -> {
-            throw new SecurityException(forbiddenMessage(type, namespaceURI, publicId, systemId, baseURI));
-        };
-
-        /**
-         * Refuses every {@code xsl:import}/{@code xsl:include}/{@code document()} lookup during XSLT compile and transform.
-         */
-        static final URIResolver URI = (href, base) -> {
-            throw new TransformerException(forbiddenMessage("uri", null, null, href, base));
-        };
 
         /**
          * Refuses every external entity lookup performed by a StAX parser.
@@ -209,6 +194,40 @@ final class Resolvers {
                 return resolved;
             }
             throw new SecurityException(forbiddenMessage(type, namespaceURI, publicId, systemId, baseURI));
+        }
+    }
+
+    /**
+     * {@link URIResolver} floor: consults an optional caller-supplied resolver and denies (throws) whatever the caller does not resolve.
+     *
+     * <p>The XSLT counterpart of {@link FallbackDenyResolver}, guarding {@code xsl:import}/{@code xsl:include} at compile time and {@code document()} at
+     * transform time. The hardened {@link javax.xml.transform.TransformerFactory} and {@link javax.xml.transform.Transformer} wrappers install one of these and
+     * route a caller-set resolver through {@link #setDelegate} rather than letting it replace the floor. A caller opts a specific URI in by returning a
+     * non-{@code null} {@link Source}; anything left unresolved is denied.</p>
+     */
+    static final class FallbackDenyURIResolver implements URIResolver {
+
+        private URIResolver delegate;
+
+        FallbackDenyURIResolver(final URIResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        void setDelegate(final URIResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        URIResolver getDelegate() {
+            return delegate;
+        }
+
+        @Override
+        public Source resolve(final String href, final String base) throws TransformerException {
+            final Source resolved = delegate != null ? delegate.resolve(href, base) : null;
+            if (resolved != null) {
+                return resolved;
+            }
+            throw new TransformerException(forbiddenMessage("uri", null, null, href, base));
         }
     }
 

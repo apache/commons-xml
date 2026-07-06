@@ -22,15 +22,34 @@ import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
+import javax.xml.transform.URIResolver;
 
 /**
  * {@link Transformer} wrapper that rewrites the Source on every {@link Transformer#transform(Source, Result)} call through
- * {@link XmlFactories#harden(Source)} before delegating.
+ * {@link XmlFactories#harden(Source)} before delegating, and keeps a deny-all {@link URIResolver} floor so runtime {@code document()} calls a caller does not
+ * resolve are denied rather than fetched.
+ *
+ * <p>The floor is installed on the delegate transformer at construction, seeded with the factory's compile-time resolver; {@link #setURIResolver(URIResolver)}
+ * routes a caller's resolver through it rather than replacing it, so the block cannot be dropped.</p>
  */
 final class HardeningTransformer extends DelegatingTransformer {
 
-    HardeningTransformer(final Transformer delegate) {
+    private final Resolvers.FallbackDenyURIResolver floor;
+
+    HardeningTransformer(final Transformer delegate, final URIResolver uriResolver) {
         super(delegate);
+        this.floor = new Resolvers.FallbackDenyURIResolver(uriResolver);
+        delegate.setURIResolver(floor);
+    }
+
+    @Override
+    public void setURIResolver(final URIResolver resolver) {
+        floor.setDelegate(resolver);
+    }
+
+    @Override
+    public URIResolver getURIResolver() {
+        return floor.getDelegate();
     }
 
     @Override

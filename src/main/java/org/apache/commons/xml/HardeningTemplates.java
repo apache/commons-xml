@@ -47,7 +47,6 @@ final class HardeningTemplates extends DelegatingTemplates {
         if (transformer == null) {
             return null;
         }
-        transformer.setURIResolver(uriResolver);
-        return new HardeningTransformer(transformer);
+        return new HardeningTransformer(transformer, uriResolver);
     }
 }

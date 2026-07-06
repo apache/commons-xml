@@ -21,6 +21,7 @@ import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
@@ -54,8 +55,22 @@ import org.xml.sax.XMLReader;
  */
 final class HardeningTransformerFactory extends DelegatingTransformerFactory {
 
+    private final Resolvers.FallbackDenyURIResolver floor = new Resolvers.FallbackDenyURIResolver(null);
+
     HardeningTransformerFactory(final SAXTransformerFactory delegate) {
         super(delegate);
+        // Compile-time block for xsl:import/xsl:include and document(); a caller-set resolver is routed through the floor rather than replacing it.
+        super.setURIResolver(floor);
+    }
+
+    @Override
+    public void setURIResolver(final URIResolver resolver) {
+        floor.setDelegate(resolver);
+    }
+
+    @Override
+    public URIResolver getURIResolver() {
+        return floor.getDelegate();
     }
 
     @Override
@@ -74,13 +89,13 @@ final class HardeningTransformerFactory extends DelegatingTransformerFactory {
     public Transformer newTransformer() throws TransformerConfigurationException {
         // Identity transformer: still parses runtime sources, so wrap it to harden Transformer.transform(Source, Result).
         final Transformer transformer = super.newTransformer();
-        return transformer == null ? null : new HardeningTransformer(transformer);
+        return transformer == null ? null : new HardeningTransformer(transformer, getURIResolver());
     }
 
     @Override
     public Transformer newTransformer(final Source source) throws TransformerConfigurationException {
         final Transformer transformer = super.newTransformer(XmlFactories.harden(source));
-        return transformer == null ? null : new HardeningTransformer(transformer);
+        return transformer == null ? null : new HardeningTransformer(transformer, getURIResolver());
     }
 
     @Override

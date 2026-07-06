@@ -49,25 +49,20 @@ import org.xml.sax.EntityResolver;
 final class DocumentBuilderHardener {
 
     /**
-     * Wrapper that sets a deny-all {@link EntityResolver} on every {@link DocumentBuilder} produced.
+     * Wrapper that keeps a deny-all {@link EntityResolver} floor on every {@link DocumentBuilder} produced.
      *
      * <p>Required for implementations that do not honour JAXP 1.5 {@code ACCESS_EXTERNAL_*} (the external Xerces distribution): the factory carries no resolver
-     * of its own, so it has to be set on each builder.</p>
+     * of its own, so the floor is installed on each builder via a {@link HardeningDocumentBuilder}, which a caller-set resolver cannot replace.</p>
      */
     private static final class HardeningDocumentBuilderFactory extends DelegatingDocumentBuilderFactory {
 
-        private final EntityResolver resolver;
-
-        HardeningDocumentBuilderFactory(final DocumentBuilderFactory delegate, final EntityResolver resolver) {
+        HardeningDocumentBuilderFactory(final DocumentBuilderFactory delegate) {
             super(delegate);
-            this.resolver = resolver;
         }
 
         @Override
         public DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
-            final DocumentBuilder builder = super.newDocumentBuilder();
-            builder.setEntityResolver(resolver);
-            return builder;
+            return new HardeningDocumentBuilder(super.newDocumentBuilder());
         }
     }
 
@@ -94,8 +89,8 @@ final class DocumentBuilderHardener {
             // Honoured: the JAXP 1.5 properties block external fetches, so the bare factory is already hardened.
             return factory;
         }
-        // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; install a deny-all resolver on every DocumentBuilder.
-        return new HardeningDocumentBuilderFactory(factory, Resolvers.DenyAll.ENTITY2);
+        // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; wrap every DocumentBuilder so a deny-all resolver floor blocks external fetches.
+        return new HardeningDocumentBuilderFactory(factory);
     }
 
     private DocumentBuilderHardener() {

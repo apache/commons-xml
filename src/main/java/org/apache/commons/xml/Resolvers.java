@@ -18,6 +18,7 @@
 package org.apache.commons.xml;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 import javax.xml.stream.XMLResolver;
@@ -26,64 +27,34 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.URIResolver;
 
 import org.w3c.dom.ls.LSResourceResolver;
+import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.ext.EntityResolver2;
 
 /**
- * Stateless resolver singletons that fix the outcome of every external lookup.
+ * Policy resolvers that fix the outcome of every external lookup.
  *
- * <p>Two flavours are exposed, each as a typed singleton field per resolver interface:</p>
+ * <p>Three members are exposed:</p>
  * <ul>
- *     <li>{@link DenyAll} refuses every lookup with an exception. Use this on schema/XSLT compile paths and on parser entity hooks where any external fetch is
- *         a hardening violation.</li>
- *     <li>{@link IgnoreAll} returns an empty input. Use this on Woodstox's DTD-subset and undeclared-entity hooks where the parse must continue with no
- *         replacement content.</li>
+ *     <li>{@link DenyAll} refuses every lookup with an exception. Stateless singletons; use them on schema/XSLT compile paths and on StAX entity hooks where
+ *         any external fetch is a hardening violation.</li>
+ *     <li>{@link IgnoreAll} returns an empty input. Stateless singleton; use it on Woodstox's DTD-subset and undeclared-entity hooks where the parse must
+ *         continue with no replacement content.</li>
+ *     <li>{@link FallbackDenyResolver} denies the SAX/DOM entity channel but, unlike the others, is instantiated to wrap an optional caller-supplied resolver so
+ *         a caller can opt specific resources in without removing the deny-all floor.</li>
  * </ul>
  *
- * <p>{@link XMLResolver} and {@link EntityResolver2} both declare a 4-arg {@code resolveEntity(String, String, String, String)} with identical erasure but
- * different parameter semantics, return types ({@link Object} vs {@link InputSource}) and throws clauses ({@link XMLStreamException} vs {@link SAXException}),
- * so they cannot coexist on the same class. Each flavour therefore exposes its {@code XMLResolver} and {@code EntityResolver2} singletons separately.</p>
+ * <p>The {@link DenyAll} and {@link IgnoreAll} singletons cover the {@link LSResourceResolver}, {@link URIResolver} and {@link XMLResolver} channels. The
+ * hardened wrappers keep those non-removable by routing a caller-set resolver through {@code setDelegate} on a floor instance rather than replacing it.</p>
  */
 final class Resolvers {
 
     /**
-     * Refuses every external resource lookup with an exception.
-     *
-     * <p>The single-method resolvers ({@link LSResourceResolver}, {@link URIResolver}, {@link XMLResolver}) are exposed as lambdas; {@link EntityResolver2}
-     * declares three methods, so it lives in a private nested class.</p>
+     * Refuses every external resource lookup with an exception. All members are single-method resolvers exposed as lambdas.
      */
     static final class DenyAll {
-
-        /**
-         * {@link EntityResolver2}: refuses every external entity lookup performed by a SAX or DOM parser.
-         */
-        private static final class DenyAllEntityResolver2 implements EntityResolver2 {
-
-            private DenyAllEntityResolver2() {
-            }
-
-            @Override
-            public InputSource getExternalSubset(final String name, final String baseURI) {
-                // Canonical EntityResolver2 "no synthetic subset" signal; matches the behavior of an absent resolver. Blocking happens in resolveEntity below.
-                return null;
-            }
-
-            @Override
-            public InputSource resolveEntity(final String publicId, final String systemId) throws SAXException {
-                throw new SAXException(forbiddenMessage(null, null, publicId, systemId, null));
-            }
-
-            @Override
-            public InputSource resolveEntity(final String name, final String publicId, final String baseURI, final String systemId) throws SAXException {
-                throw new SAXException(forbiddenMessage(name, null, publicId, systemId, baseURI));
-            }
-        }
-
-        /**
-         * Refuses every external entity lookup performed by a SAX or DOM parser, including the external DTD subset.
-         */
-        static final EntityResolver2 ENTITY2 = new DenyAllEntityResolver2();
 
         /**
          * Refuses every {@code xs:import}/{@code xs:include}/{@code xs:redefine} lookup at schema-compile time.
@@ -113,7 +84,7 @@ final class Resolvers {
     /**
      * Returns an empty input for every external resource lookup so the parse can continue without replacement content.
      *
-     * <p>Only an {@link XMLResolver} flavour is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use the deny-all hooks.</p>
+     * <p>Only an {@link XMLResolver} flavour is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use {@link FallbackDenyResolver}.</p>
      */
     static final class IgnoreAll {
 
@@ -129,6 +100,80 @@ final class Resolvers {
         static final XMLResolver XML = (publicID, systemID, baseURI, namespace) -> EMPTY;
 
         private IgnoreAll() {
+        }
+    }
+
+    /**
+     * Entity resolver that consults an optional caller-supplied resolver and denies (throws) whatever the caller does not resolve.
+     *
+     * <p>This is the entity-resolution counterpart of the JAXP 1.5 {@code ACCESS_EXTERNAL_*} properties: a non-overridable floor. The hardened DOM and SAX
+     * wrappers install one of these and, when the caller sets their own {@link EntityResolver}, route it through {@link #setDelegate} rather than letting it
+     * replace the floor. A caller therefore opts a specific resource in by returning a non-{@code null} {@link InputSource} from their resolver; anything they
+     * leave unresolved (a {@code null} return, or no caller resolver at all) goes to {@link #onUnresolved}, which denies by default.</p>
+     *
+     * <p>It extends {@link DefaultHandler2} so it is also usable as a {@link org.xml.sax.ext.LexicalHandler} (see {@code SAXParserHardener}'s Android subclass,
+     * which needs {@code startDTD}/{@code endDTD}); {@link #getExternalSubset} therefore inherits the {@code DefaultHandler2} "no synthetic subset" default. Only
+     * {@link #resolveEntity(String, String, String, String) resolveEntity} (the actual external fetch) reaches the deny fallback.</p>
+     */
+    static class FallbackDenyResolver extends DefaultHandler2 {
+
+        /**
+         * Caller-supplied resolver consulted first, or {@code null} for a pure deny-all floor.
+         */
+        private EntityResolver delegate;
+
+        FallbackDenyResolver(final EntityResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        /**
+         * Replaces the caller resolver consulted ahead of the floor; lets a single floor instance back successive {@code setEntityResolver} calls.
+         *
+         * @param delegate the caller-supplied resolver, or {@code null} for a pure deny-all floor.
+         */
+        final void setDelegate(final EntityResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        final EntityResolver getDelegate() {
+            return delegate;
+        }
+
+        @Override
+        public final InputSource resolveEntity(final String publicId, final String systemId) throws SAXException, IOException {
+            return resolveEntity(null, publicId, null, systemId);
+        }
+
+        @Override
+        public final InputSource resolveEntity(final String name, final String publicId, final String baseURI, final String systemId)
+                throws SAXException, IOException {
+            final InputSource resolved = resolveWithDelegate(name, publicId, baseURI, systemId);
+            return resolved != null ? resolved : onUnresolved(name, publicId, baseURI, systemId);
+        }
+
+        /**
+         * Outcome when neither the caller delegate nor this resolver provides the entity. Denies by default; a subclass may permit specific lookups (e.g. the
+         * external DTD subset) by returning {@code null} or an {@link InputSource} instead of calling {@code super}.
+         *
+         * @param name     the entity name, or {@code null} on the 2-arg resolution path.
+         * @param publicId the public identifier, or {@code null} if none.
+         * @param baseURI  the base URI for relative resolution, or {@code null}.
+         * @param systemId the system identifier of the unresolved entity.
+         * @return an {@link InputSource} to permit the lookup, or {@code null} to skip it silently; the default implementation never returns normally.
+         * @throws SAXException to deny the lookup (the default behavior).
+         * @throws IOException  if a subclass opens a stream that fails.
+         */
+        protected InputSource onUnresolved(final String name, final String publicId, final String baseURI, final String systemId)
+                throws SAXException, IOException {
+            throw new SAXException(forbiddenMessage(name, null, publicId, systemId, baseURI));
+        }
+
+        private InputSource resolveWithDelegate(final String name, final String publicId, final String baseURI, final String systemId)
+                throws SAXException, IOException {
+            if (delegate instanceof EntityResolver2) {
+                return ((EntityResolver2) delegate).resolveEntity(name, publicId, baseURI, systemId);
+            }
+            return delegate != null ? delegate.resolveEntity(publicId, systemId) : null;
         }
     }
 

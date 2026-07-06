@@ -38,56 +38,15 @@ import org.xml.sax.ext.EntityResolver2;
 /**
  * Policy resolvers that fix the outcome of every external lookup.
  *
- * <p>Two flavours are exposed:</p>
- * <ul>
- *     <li><strong>Stateless singletons</strong> ({@link DenyAll}, {@link IgnoreAll}) fix the outcome unconditionally: {@link DenyAll} throws, {@link IgnoreAll}
- *         returns an empty input. Used on StAX hooks where any external fetch is a hardening violation ({@link DenyAll#XML}) or must continue with no
- *         replacement content ({@link IgnoreAll#XML}, Woodstox's DTD-subset and undeclared-entity hooks).</li>
- *     <li><strong>Fallback-deny floors</strong> ({@link FallbackDenyResolver} for {@code EntityResolver}, {@link FallbackDenyLSResourceResolver} for
- *         {@link LSResourceResolver}, {@link FallbackDenyURIResolver} for {@link URIResolver}) wrap an optional caller-supplied resolver: they consult it first
- *         and deny whatever it does not resolve. The hardened wrappers install one and route a caller-set resolver through {@code setDelegate} rather than
- *         replacing it, so a caller can opt specific resources in without removing the deny-all floor.</li>
- * </ul>
+ * <p>All members are <strong>fallback-deny floors</strong> ({@link FallbackDenyResolver} for {@code EntityResolver}, {@link FallbackDenyLSResourceResolver} for
+ * {@link LSResourceResolver}, {@link FallbackDenyURIResolver} for {@link URIResolver}, {@link FallbackDenyXMLResolver} for {@link XMLResolver}): each wraps an
+ * optional caller-supplied resolver, consults it first, and denies whatever it does not resolve. The hardened wrappers install one and route a caller-set
+ * resolver through {@code setDelegate} rather than replacing it, so a caller can opt specific resources in without removing the floor.</p>
+ *
+ * <p>{@link FallbackIgnoreXMLResolver} is a floor variant whose unresolved policy returns an empty input instead of throwing, for the Woodstox DTD-subset and
+ * undeclared-entity hooks where a missing resource must be skipped rather than denied.</p>
  */
 final class Resolvers {
-
-    /**
-     * Refuses every external resource lookup with an exception. All members are single-method resolvers exposed as lambdas.
-     */
-    static final class DenyAll {
-
-        /**
-         * Refuses every external entity lookup performed by a StAX parser.
-         */
-        static final XMLResolver XML = (publicID, systemID, baseURI, namespace) -> {
-            throw new XMLStreamException(forbiddenMessage(null, namespace, publicID, systemID, baseURI));
-        };
-
-        private DenyAll() {
-        }
-    }
-
-    /**
-     * Returns an empty input for every external resource lookup so the parse can continue without replacement content.
-     *
-     * <p>Only an {@link XMLResolver} flavour is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use {@link FallbackDenyResolver}.</p>
-     */
-    static final class IgnoreAll {
-
-        /**
-         * Empty {@link ByteArrayInputStream} shared across every call. {@code read()} on a zero-length array always returns {@code -1}, so reusing the
-         * instance is safe even though the type is technically stateful.
-         */
-        private static final InputStream EMPTY = new ByteArrayInputStream(new byte[0]);
-
-        /**
-         * Returns an empty input for every external entity lookup performed by a StAX parser.
-         */
-        static final XMLResolver XML = (publicID, systemID, baseURI, namespace) -> EMPTY;
-
-        private IgnoreAll() {
-        }
-    }
 
     /**
      * Entity resolver that consults an optional caller-supplied resolver and denies (throws) whatever the caller does not resolve.
@@ -228,6 +187,91 @@ final class Resolvers {
                 return resolved;
             }
             throw new TransformerException(forbiddenMessage("uri", null, null, href, base));
+        }
+    }
+
+    /**
+     * {@link XMLResolver} floor: consults an optional caller-supplied resolver and denies (throws) whatever the caller does not resolve.
+     *
+     * <p>The StAX counterpart of {@link FallbackDenyResolver}, installed on each entity-resolution hook. The hardened {@link javax.xml.stream.XMLInputFactory}
+     * wrapper routes a caller-set resolver through {@link #setDelegate} rather than letting it replace the floor. A caller opts a specific entity in by returning
+     * a non-{@code null} result; anything left unresolved goes to {@link #onUnresolved}, which denies by default. Subclasses override {@code onUnresolved} to give
+     * a hook a different unresolved policy (e.g. return an empty input for the external DTD subset, or for undeclared entities) while keeping the caller-delegate
+     * behaviour.</p>
+     */
+    static class FallbackDenyXMLResolver implements XMLResolver {
+
+        private XMLResolver delegate;
+
+        FallbackDenyXMLResolver(final XMLResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        final void setDelegate(final XMLResolver delegate) {
+            this.delegate = delegate;
+        }
+
+        final XMLResolver getDelegate() {
+            return delegate;
+        }
+
+        @Override
+        public final Object resolveEntity(final String publicID, final String systemID, final String baseURI, final String namespace) throws XMLStreamException {
+            final Object resolved = delegate != null ? delegate.resolveEntity(publicID, systemID, baseURI, namespace) : null;
+            return resolved != null ? resolved : onUnresolved(publicID, systemID, baseURI, namespace);
+        }
+
+        /**
+         * Outcome when the caller delegate does not resolve the entity. Denies by default; a subclass may return an {@link java.io.InputStream}, {@link Source} or
+         * other {@link XMLResolver}-supported value (for example an empty input) instead of calling {@code super}, or {@code throw}
+         * {@link #denied(String, String, String, String)} to deny only some lookups.
+         *
+         * @param publicID the public identifier, or {@code null} if none.
+         * @param systemID the system identifier of the unresolved entity.
+         * @param baseURI  the base URI for relative resolution, or {@code null}.
+         * @param namespace the namespace (or, for Woodstox, the entity name), or {@code null}.
+         * @return the replacement input, or a value the caller's parser accepts; the default implementation never returns normally.
+         * @throws XMLStreamException to deny the lookup (the default behavior).
+         */
+        protected Object onUnresolved(final String publicID, final String systemID, final String baseURI, final String namespace) throws XMLStreamException {
+            throw denied(publicID, systemID, baseURI, namespace);
+        }
+
+        /**
+         * Builds the standard "forbidden by hardening" exception for a denied lookup, so a subclass with a mixed policy can reuse the deny outcome for the
+         * lookups it refuses.
+         *
+         * @param publicID the public identifier, or {@code null} if none.
+         * @param systemID the system identifier of the unresolved entity.
+         * @param baseURI  the base URI for relative resolution, or {@code null}.
+         * @param namespace the namespace (or, for Woodstox, the entity name), or {@code null}.
+         * @return the exception to throw.
+         */
+        protected final XMLStreamException denied(final String publicID, final String systemID, final String baseURI, final String namespace) {
+            return new XMLStreamException(forbiddenMessage(null, namespace, publicID, systemID, baseURI));
+        }
+    }
+
+    /**
+     * {@link FallbackDenyXMLResolver} variant whose unresolved policy returns an empty input instead of throwing, so the parse continues with no replacement
+     * content. Used on Woodstox's DTD-subset and undeclared-entity hooks (where a missing resource must be skipped, not denied), while still consulting an
+     * optional caller-supplied resolver first.
+     */
+    static class FallbackIgnoreXMLResolver extends FallbackDenyXMLResolver {
+
+        /**
+         * Empty {@link ByteArrayInputStream} shared across every call. {@code read()} on a zero-length array always returns {@code -1}, so reusing the instance
+         * is safe even though the type is technically stateful.
+         */
+        private static final InputStream EMPTY = new ByteArrayInputStream(new byte[0]);
+
+        FallbackIgnoreXMLResolver(final XMLResolver delegate) {
+            super(delegate);
+        }
+
+        @Override
+        protected Object onUnresolved(final String publicID, final String systemID, final String baseURI, final String namespace) throws XMLStreamException {
+            return EMPTY;
         }
     }
 

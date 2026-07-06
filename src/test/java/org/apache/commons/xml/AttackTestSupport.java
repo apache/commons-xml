@@ -98,7 +98,7 @@ final class AttackTestSupport {
      * error or fatalError so the helpers can observe the block via the same mechanism the spec uses to surface it. Warnings stay silent: they are not security
      * signals.</p>
      */
-    private static final class StrictReporter implements ErrorListener, ErrorHandler {
+    static final class StrictReporter implements ErrorListener, ErrorHandler {
 
         @Override
         public void error(final SAXParseException exception) throws SAXException {
@@ -170,7 +170,7 @@ final class AttackTestSupport {
      * presence is the leak signal.</p>
      */
     static final String LEAKED_MARKER = "All your base are belong to us";
-    private static final StrictReporter STRICT_REPORTER = new StrictReporter();
+    static final StrictReporter STRICT_REPORTER = new StrictReporter();
 
     /**
      * Asserts a hardened DOM parse of the payload throws.

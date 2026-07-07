@@ -53,9 +53,10 @@ import org.xml.sax.ext.LexicalHandler;
  *         DOCTYPE-only document parses without a fetch attempt. If not supported, the fetch will throw instead, due to the following settings.</li>
  *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(XMLReader)}, which adapts to the JDK limit properties or Xerces'
  *         {@code SecurityManager} as appropriate.</li>
- *     <li><strong>{@code ACCESS_EXTERNAL_*}</strong>: the dividing capability. Readers that honor it (the JDK-internal Xerces) block external fetches through
- *         the JAXP 1.5 properties and are returned as-is. Readers that reject it (the external Xerces distribution) are wrapped in a {@link HardeningXMLReader}
- *         that keeps a deny-all {@link EntityResolver} floor a caller-set resolver cannot remove.</li>
+ *     <li><strong>Deny-all resolver floor</strong>: every reader is wrapped in a {@link HardeningXMLReader} that keeps a deny-all {@link EntityResolver} floor.
+ *         That floor blocks external DTD, entity, schema and {@code xi:include} fetches in one place: the stock JDK's XInclude processor ignores
+ *         {@code ACCESS_EXTERNAL_*} and consults the {@link EntityResolver} instead, so no {@code ACCESS_EXTERNAL_*} properties are needed here. A caller can
+ *         chain its own resolver onto the floor to allow-list resources, but cannot remove it.</li>
  * </ul>
  */
 final class SAXParserHardener {
@@ -177,15 +178,9 @@ final class SAXParserHardener {
         setOptionalFeature(reader, XERCES_LOAD_EXTERNAL_DTD, false);
         // Optional, implementation-based: JDK limit properties or Xerces' SecurityManager.
         Limits.tryApply(reader);
-        // ACCESS_EXTERNAL_* support is the dividing capability between JAXP 1.5 implementations and older ones.
-        if (trySetProperty(reader, XMLConstants.ACCESS_EXTERNAL_DTD, "")
-                && trySetProperty(reader, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")) {
-            // Required: Stock JDK XInclude processor ignores ACCESS_EXTERNAL_*; the deny-all EntityResolver is the only
-            // way to block xi:include href resolution. Callers can override it on the reader to allow-list.
-            return new HardeningXMLReader(reader);
-        }
-        // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; wrap the reader so a deny-all resolver floor blocks external fetches and a caller-set resolver
-        // cannot replace it.
+        // Required: HardeningXMLReader installs a deny-all EntityResolver floor on the reader.
+        // That floor blocks external DTD, entity, schema and xi:include fetches in one place: no ACCESS_EXTERNAL_* properties are needed here.
+        // Callers can chain their resolvers, but not override the floor.
         return new HardeningXMLReader(reader);
     }
 

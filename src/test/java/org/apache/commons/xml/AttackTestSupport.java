@@ -40,6 +40,7 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.w3c.dom.Document;
@@ -857,6 +858,18 @@ final class AttackTestSupport {
     static XMLReader strictXMLReader(final XMLReader reader) {
         reader.setErrorHandler(STRICT_REPORTER);
         return reader;
+    }
+
+    /**
+     * Runs the action and, if it throws, aborts (skips rather than fails) the calling test. Used to guard platform-optional configuration such as
+     * {@code setXIncludeAware}, which the Android JAXP implementations do not support.
+     */
+    static void assumeDoesNotThrow(final Executable action) {
+        try {
+            action.execute();
+        } catch (final Throwable t) {
+            Assumptions.assumeTrue(false, "platform does not support this configuration: " + t);
+        }
     }
 
     /** Runs the action and silently swallows any thrown exception; used to apply best-effort permissive-side flags that may not be supported. */

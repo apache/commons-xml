@@ -20,6 +20,8 @@ package org.apache.commons.xml;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import javax.xml.stream.XMLResolver;
 import javax.xml.stream.XMLStreamException;
@@ -113,12 +115,14 @@ final class Resolvers {
             throw new SAXException(forbiddenMessage(name, null, publicId, systemId, baseURI));
         }
 
-        private InputSource resolveWithDelegate(final String name, final String publicId, final String baseURI, final String systemId)
-                throws SAXException, IOException {
-            if (delegate instanceof EntityResolver2) {
-                return ((EntityResolver2) delegate).resolveEntity(name, publicId, baseURI, systemId);
+        private InputSource resolveWithDelegate(final String name, final String publicId, final String baseURI,
+                final String systemId) throws SAXException, IOException {
+            if (delegate != null) {
+                return delegate instanceof EntityResolver2 ? ((EntityResolver2) delegate).resolveEntity(name, publicId, baseURI, systemId) :
+                        // We need to resolve the systemId against baseURI, because a plain EntityResolver expects an absolute URI.
+                        delegate.resolveEntity(publicId, absolutize(baseURI, systemId));
             }
-            return delegate != null ? delegate.resolveEntity(publicId, systemId) : null;
+            return null;
         }
     }
 
@@ -272,6 +276,25 @@ final class Resolvers {
         @Override
         protected Object onUnresolved(final String publicID, final String systemID, final String baseURI, final String namespace) throws XMLStreamException {
             return EMPTY;
+        }
+    }
+
+    /**
+     * Resolves {@code systemId} against {@code baseURI}.
+     *
+     * @param baseURI  the absolute base URI to resolve against, or {@code null} if none is available.
+     * @param systemId the system identifier, possibly relative to {@code baseURI}.
+     * @return the absolutized system identifier, or {@code systemId} unchanged when it cannot or need not be resolved.
+     */
+    private static String absolutize(final String baseURI, final String systemId) {
+        if (systemId == null || baseURI == null) {
+            return systemId;
+        }
+        try {
+            final URI system = new URI(systemId);
+            return system.isAbsolute() ? systemId : new URI(baseURI).resolve(system).toString();
+        } catch (final URISyntaxException e) {
+            return systemId;
         }
     }
 

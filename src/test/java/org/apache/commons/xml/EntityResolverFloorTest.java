@@ -28,7 +28,9 @@ import java.io.StringReader;
 import java.net.URL;
 
 import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLResolver;
 import javax.xml.stream.XMLStreamConstants;
@@ -159,6 +161,65 @@ class EntityResolverFloorTest {
             return; // blocked at parse: acceptable
         }
         assertFalse(text.toString().contains(AttackTestSupport.LEAKED_MARKER), "parse(source, handler) leaked the external entity:\n" + text);
+    }
+
+    // ---- Entity channel: relative XInclude href (DOM / SAX) ----------------------------------------------------------------------------------------------
+
+    /**
+     * Allow-all resolver: it denies nothing, resolving whatever {@code systemId} it is handed by opening it as a URL. It nonetheless cannot resolve a bare
+     * relative reference such as {@code referenced.xml}, because a plain {@link EntityResolver} (unlike {@link org.xml.sax.ext.EntityResolver2}) is given no
+     * base URI and the SAX2 contract promises it an already-absolutized {@code systemId}. So the resolution fails not from any deny decision but because the
+     * resolver was never handed the whole URL: it succeeds only if the floor absolutizes the XInclude href against the base before consulting the caller.
+     */
+    private static final EntityResolver RESOLVE_ALL = (publicId, systemId) ->
+            new InputSource(new URL(systemId).openStream());
+
+    @Test
+    @Tag("dom")
+    void domResolvesRelativeXIncludeSibling() throws Exception {
+        final DocumentBuilder builder = xIncludeAwareBuilder();
+        builder.setEntityResolver(RESOLVE_ALL);
+        final Document doc = builder.parse(XINCLUDE_HOST);
+        assertTrue(doc.getDocumentElement().getTextContent().contains(AttackTestSupport.LEAKED_MARKER),
+                "relative XInclude sibling should resolve through the caller's resolver after the floor absolutizes the href");
+    }
+
+    @Test
+    @Tag("sax")
+    void saxResolvesRelativeXIncludeSibling() throws Exception {
+        final XMLReader reader = xIncludeAwareReader();
+        reader.setEntityResolver(RESOLVE_ALL);
+        final StringBuilder text = new StringBuilder();
+        reader.setContentHandler(new DefaultHandler() {
+            @Override
+            public void characters(final char[] ch, final int start, final int length) {
+                text.append(ch, start, length);
+            }
+        });
+        reader.parse(XINCLUDE_HOST);
+        assertTrue(text.toString().contains(AttackTestSupport.LEAKED_MARKER),
+                "relative XInclude sibling should resolve through the caller's resolver after the floor absolutizes the href");
+    }
+
+    /** Absolute URL of the host document whose {@code xi:include} references {@code referenced.xml} by a relative href. */
+    private static final String XINCLUDE_HOST = AttackTestSupport.resourceUrl("with-xinclude.xml").toString();
+
+    private static DocumentBuilder xIncludeAwareBuilder() throws Exception {
+        final DocumentBuilderFactory factory = XmlFactories.newDocumentBuilderFactory();
+        factory.setNamespaceAware(true);
+        AttackTestSupport.assumeDoesNotThrow(() -> factory.setXIncludeAware(true));
+        final DocumentBuilder builder = factory.newDocumentBuilder();
+        builder.setErrorHandler(AttackTestSupport.STRICT_REPORTER);
+        return builder;
+    }
+
+    private static XMLReader xIncludeAwareReader() throws Exception {
+        final SAXParserFactory factory = XmlFactories.newSAXParserFactory();
+        factory.setNamespaceAware(true);
+        AttackTestSupport.assumeDoesNotThrow(() -> factory.setXIncludeAware(true));
+        final XMLReader reader = factory.newSAXParser().getXMLReader();
+        reader.setErrorHandler(AttackTestSupport.STRICT_REPORTER);
+        return reader;
     }
 
     // ---- Entity channel (StAX) ---------------------------------------------------------------------------------------------------------------------------

@@ -180,8 +180,9 @@ final class SAXParserHardener {
         // ACCESS_EXTERNAL_* support is the dividing capability between JAXP 1.5 implementations and older ones.
         if (trySetProperty(reader, XMLConstants.ACCESS_EXTERNAL_DTD, "")
                 && trySetProperty(reader, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")) {
-            // Honored (stock JDK): the JAXP 1.5 properties block external fetches, so the bare reader is already hardened.
-            return reader;
+            // Required: Stock JDK XInclude processor ignores ACCESS_EXTERNAL_*; the deny-all EntityResolver is the only
+            // way to block xi:include href resolution. Callers can override it on the reader to allow-list.
+            return new HardeningXMLReader(reader);
         }
         // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; wrap the reader so a deny-all resolver floor blocks external fetches and a caller-set resolver
         // cannot replace it.

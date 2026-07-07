@@ -171,8 +171,11 @@ class EntityResolverFloorTest {
      * base URI and the SAX2 contract promises it an already-absolutized {@code systemId}. So the resolution fails not from any deny decision but because the
      * resolver was never handed the whole URL: it succeeds only if the floor absolutizes the XInclude href against the base before consulting the caller.
      */
-    private static final EntityResolver RESOLVE_ALL = (publicId, systemId) ->
-            new InputSource(new URL(systemId).openStream());
+    private static final EntityResolver RESOLVE_ALL = (publicId, systemId) -> {
+        final InputSource source = new InputSource(new URL(systemId).openStream());
+        source.setSystemId(systemId);
+        return source;
+    };
 
     @Test
     @Tag("dom")

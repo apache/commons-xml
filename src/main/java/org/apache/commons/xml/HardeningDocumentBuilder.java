@@ -17,9 +17,17 @@
 
 package org.apache.commons.xml;
 
-import javax.xml.parsers.DocumentBuilder;
+import java.io.IOException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.validation.Schema;
+
+import org.w3c.dom.DOMImplementation;
+import org.w3c.dom.Document;
 import org.xml.sax.EntityResolver;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 /**
  * {@link DocumentBuilder} wrapper that keeps a deny-all {@link EntityResolver} as a non-overridable floor.
@@ -28,13 +36,15 @@ import org.xml.sax.EntityResolver;
  * caller's resolver does not satisfy is denied rather than fetched. {@link #reset()} re-establishes the bare deny-all floor, matching the just-constructed
  * state.</p>
  */
-final class HardeningDocumentBuilder extends DelegatingDocumentBuilder {
+final class HardeningDocumentBuilder extends DocumentBuilder {
+
+    private final DocumentBuilder delegate;
 
     private final Resolvers.FallbackDenyResolver floor = new Resolvers.FallbackDenyResolver(null);
 
     HardeningDocumentBuilder(final DocumentBuilder delegate) {
-        super(delegate);
-        super.setEntityResolver(floor);
+        this.delegate = delegate;
+        delegate.setEntityResolver(floor);
     }
 
     @Override
@@ -44,8 +54,50 @@ final class HardeningDocumentBuilder extends DelegatingDocumentBuilder {
 
     @Override
     public void reset() {
-        super.reset();
+        delegate.reset();
         floor.setDelegate(null);
-        super.setEntityResolver(floor);
+        delegate.setEntityResolver(floor);
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public Document parse(final InputSource is) throws SAXException, IOException {
+        return delegate.parse(is);
+    }
+
+    @Override
+    public boolean isNamespaceAware() {
+        return delegate.isNamespaceAware();
+    }
+
+    @Override
+    public boolean isValidating() {
+        return delegate.isValidating();
+    }
+
+    @Override
+    public boolean isXIncludeAware() {
+        return delegate.isXIncludeAware();
+    }
+
+    @Override
+    public void setErrorHandler(final ErrorHandler eh) {
+        delegate.setErrorHandler(eh);
+    }
+
+    @Override
+    public Document newDocument() {
+        return delegate.newDocument();
+    }
+
+    @Override
+    public DOMImplementation getDOMImplementation() {
+        return delegate.getDOMImplementation();
+    }
+
+    @Override
+    public Schema getSchema() {
+        return delegate.getSchema();
+    }
+    // </editor-fold>
 }

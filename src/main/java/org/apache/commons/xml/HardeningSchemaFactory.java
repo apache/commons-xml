@@ -24,7 +24,10 @@ import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
 import org.w3c.dom.ls.LSResourceResolver;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 
 /**
  * Capability-driven hardening wrapper for any {@link SchemaFactory} on the classpath, the same recipe for every implementation. It is the entry point reached
@@ -48,12 +51,14 @@ import org.xml.sax.SAXException;
  * lower bound: a caller-set {@link LSResourceResolver} is routed through it (opting a specific lookup in by returning a non-{@code null} result) rather than
  * replacing it, so hardening cannot be dropped by swapping the resolver.</p>
  */
-final class HardeningSchemaFactory extends DelegatingSchemaFactory {
+final class HardeningSchemaFactory extends SchemaFactory {
+
+    private final SchemaFactory delegate;
 
     private final Resolvers.FallbackDenyLSResourceResolver floor = new Resolvers.FallbackDenyLSResourceResolver(null);
 
     HardeningSchemaFactory(final SchemaFactory delegate) {
-        super(delegate);
+        this.delegate = delegate;
         // Compile-time block for xs:import/include/redefine; the wrappers carry the rest (per-product resolver, source rewriting, limits via the reader).
         delegate.setResourceResolver(floor);
     }
@@ -71,12 +76,12 @@ final class HardeningSchemaFactory extends DelegatingSchemaFactory {
 
     @Override
     public Schema newSchema() throws SAXException {
-        return new HardeningSchema(super.newSchema());
+        return new HardeningSchema(delegate.newSchema());
     }
 
     @Override
     public Schema newSchema(final Source[] schemas) throws SAXException {
-        return new HardeningSchema(super.newSchema(harden(schemas)));
+        return new HardeningSchema(delegate.newSchema(harden(schemas)));
     }
 
     private static Source[] harden(final Source[] schemas) throws SAXException {
@@ -90,4 +95,41 @@ final class HardeningSchemaFactory extends DelegatingSchemaFactory {
         }
         return hardened;
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public ErrorHandler getErrorHandler() {
+        return delegate.getErrorHandler();
+    }
+
+    @Override
+    public boolean getFeature(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getFeature(name);
+    }
+
+    @Override
+    public Object getProperty(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getProperty(name);
+    }
+
+    @Override
+    public boolean isSchemaLanguageSupported(final String schemaLanguage) {
+        return delegate.isSchemaLanguageSupported(schemaLanguage);
+    }
+
+    @Override
+    public void setErrorHandler(final ErrorHandler errorHandler) {
+        delegate.setErrorHandler(errorHandler);
+    }
+
+    @Override
+    public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setFeature(name, value);
+    }
+
+    @Override
+    public void setProperty(final String name, final Object object) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setProperty(name, object);
+    }
+    // </editor-fold>
 }

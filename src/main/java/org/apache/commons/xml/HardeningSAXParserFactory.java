@@ -20,8 +20,11 @@ package org.apache.commons.xml;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.validation.Schema;
 
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 
 /**
@@ -31,14 +34,68 @@ import org.xml.sax.XMLReader;
  * fixups) has to run on each {@link XMLReader} the factory produces. This wrapper returns a {@link HardeningSAXParser}, which applies that hardening lazily to
  * both the SAX 2 {@link XMLReader} and the SAX 1 {@link org.xml.sax.Parser} it exposes.</p>
  */
-final class HardeningSAXParserFactory extends DelegatingSAXParserFactory {
+final class HardeningSAXParserFactory extends SAXParserFactory {
+
+    private final SAXParserFactory delegate;
 
     HardeningSAXParserFactory(final SAXParserFactory delegate) {
-        super(delegate);
+        this.delegate = delegate;
     }
 
     @Override
     public SAXParser newSAXParser() throws ParserConfigurationException, SAXException {
-        return new HardeningSAXParser(super.newSAXParser());
+        return new HardeningSAXParser(delegate.newSAXParser());
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public boolean getFeature(final String name) throws ParserConfigurationException, SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getFeature(name);
+    }
+
+    @Override
+    public Schema getSchema() {
+        return delegate.getSchema();
+    }
+
+    @Override
+    public boolean isNamespaceAware() {
+        return delegate.isNamespaceAware();
+    }
+
+    @Override
+    public boolean isValidating() {
+        return delegate.isValidating();
+    }
+
+    @Override
+    public boolean isXIncludeAware() {
+        return delegate.isXIncludeAware();
+    }
+
+    @Override
+    public void setFeature(final String name, final boolean value) throws ParserConfigurationException, SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setFeature(name, value);
+    }
+
+    @Override
+    public void setNamespaceAware(final boolean awareness) {
+        delegate.setNamespaceAware(awareness);
+    }
+
+    @Override
+    public void setSchema(final Schema schema) {
+        delegate.setSchema(schema);
+    }
+
+    @Override
+    public void setValidating(final boolean validating) {
+        delegate.setValidating(validating);
+    }
+
+    @Override
+    public void setXIncludeAware(final boolean state) {
+        delegate.setXIncludeAware(state);
+    }
+    // </editor-fold>
 }

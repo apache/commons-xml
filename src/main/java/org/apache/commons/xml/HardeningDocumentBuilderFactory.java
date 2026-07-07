@@ -20,6 +20,7 @@ package org.apache.commons.xml;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.validation.Schema;
 
 import org.xml.sax.EntityResolver;
 
@@ -30,14 +31,118 @@ import org.xml.sax.EntityResolver;
  * JAXP 1.5 {@code ACCESS_EXTERNAL_*} (e.g. the external Xerces distribution). A caller-set resolver is routed through the floor rather than replacing it. Kept
  * as a standalone wrapper so any hardener can reuse the floor.</p>
  */
-final class HardeningDocumentBuilderFactory extends DelegatingDocumentBuilderFactory {
+final class HardeningDocumentBuilderFactory extends DocumentBuilderFactory {
+
+    private final DocumentBuilderFactory delegate;
 
     HardeningDocumentBuilderFactory(final DocumentBuilderFactory delegate) {
-        super(delegate);
+        this.delegate = delegate;
     }
 
     @Override
     public DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
-        return new HardeningDocumentBuilder(super.newDocumentBuilder());
+        return new HardeningDocumentBuilder(delegate.newDocumentBuilder());
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public Object getAttribute(final String name) {
+        return delegate.getAttribute(name);
+    }
+
+    @Override
+    public boolean getFeature(final String name) throws ParserConfigurationException {
+        return delegate.getFeature(name);
+    }
+
+    @Override
+    public Schema getSchema() {
+        return delegate.getSchema();
+    }
+
+    @Override
+    public boolean isCoalescing() {
+        return delegate.isCoalescing();
+    }
+
+    @Override
+    public boolean isExpandEntityReferences() {
+        return delegate.isExpandEntityReferences();
+    }
+
+    @Override
+    public boolean isIgnoringComments() {
+        return delegate.isIgnoringComments();
+    }
+
+    @Override
+    public boolean isIgnoringElementContentWhitespace() {
+        return delegate.isIgnoringElementContentWhitespace();
+    }
+
+    @Override
+    public boolean isNamespaceAware() {
+        return delegate.isNamespaceAware();
+    }
+
+    @Override
+    public boolean isValidating() {
+        return delegate.isValidating();
+    }
+
+    @Override
+    public boolean isXIncludeAware() {
+        return delegate.isXIncludeAware();
+    }
+
+    @Override
+    public void setAttribute(final String name, final Object value) {
+        delegate.setAttribute(name, value);
+    }
+
+    @Override
+    public void setCoalescing(final boolean coalescing) {
+        delegate.setCoalescing(coalescing);
+    }
+
+    @Override
+    public void setExpandEntityReferences(final boolean expandEntityRef) {
+        delegate.setExpandEntityReferences(expandEntityRef);
+    }
+
+    @Override
+    public void setFeature(final String name, final boolean value) throws ParserConfigurationException {
+        delegate.setFeature(name, value);
+    }
+
+    @Override
+    public void setIgnoringComments(final boolean ignoreComments) {
+        delegate.setIgnoringComments(ignoreComments);
+    }
+
+    @Override
+    public void setIgnoringElementContentWhitespace(final boolean whitespace) {
+        delegate.setIgnoringElementContentWhitespace(whitespace);
+    }
+
+    @Override
+    public void setNamespaceAware(final boolean awareness) {
+        delegate.setNamespaceAware(awareness);
+    }
+
+    @Override
+    public void setSchema(final Schema schema) {
+        delegate.setSchema(schema);
+    }
+
+    @Override
+    public void setValidating(final boolean validating) {
+        delegate.setValidating(validating);
+    }
+
+    @Override
+    public void setXIncludeAware(final boolean state) {
+        delegate.setXIncludeAware(state);
+    }
+    // </editor-fold>
 }

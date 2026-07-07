@@ -38,15 +38,20 @@ import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.ext.EntityResolver2;
 
 /**
- * Policy resolvers that fix the outcome of every external lookup.
+ * Policy resolvers that fix the outcome of every external lookup. Each member is a floor with two defining properties:
  *
- * <p>All members are <strong>fallback-deny floors</strong> ({@link FallbackDenyResolver} for {@code EntityResolver}, {@link FallbackDenyLSResourceResolver} for
- * {@link LSResourceResolver}, {@link FallbackDenyURIResolver} for {@link URIResolver}, {@link FallbackDenyXMLResolver} for {@link XMLResolver}): each wraps an
- * optional caller-supplied resolver, consults it first, and denies whatever it does not resolve. The hardened wrappers install one and route a caller-set
- * resolver through {@code setDelegate} rather than replacing it, so a caller can opt specific resources in without removing the floor.</p>
+ * <ol>
+ * <li><strong>Non-removable, and it wraps the resolver the caller sets.</strong> The hardened wrappers install one and route a caller-set resolver through
+ * {@code setDelegate} rather than letting it replace the floor, so the caller's resolver is consulted first but cannot remove the floor underneath it.</li>
+ * <li><strong>It supplies the default action for a lookup the caller's resolver does not resolve</strong> (a {@code null} return, or no caller resolver at
+ * all). This is where a floor departs from stock JAXP: normally an unresolved lookup falls back to the processor's built-in resolution and the resource is
+ * <em>fetched</em>; a floor instead <em>denies</em> it (throws).</li>
+ * </ol>
  *
- * <p>{@link FallbackIgnoreXMLResolver} is a floor variant whose unresolved policy returns an empty input instead of throwing, for the Woodstox DTD-subset and
- * undeclared-entity hooks where a missing resource must be skipped rather than denied.</p>
+ * <p>The deny members are {@link FallbackDenyResolver} (for {@code EntityResolver}), {@link FallbackDenyLSResourceResolver} (for {@link LSResourceResolver}),
+ * {@link FallbackDenyURIResolver} (for {@link URIResolver}) and {@link FallbackDenyXMLResolver} (for {@link XMLResolver}). {@link FallbackIgnoreXMLResolver} is a
+ * variant whose default action returns an empty input instead of throwing, for the Woodstox DTD-subset and undeclared-entity hooks where a missing resource must
+ * be skipped rather than denied.</p>
  */
 final class Resolvers {
 

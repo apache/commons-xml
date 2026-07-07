@@ -45,7 +45,7 @@ import org.xml.sax.ext.LexicalHandler;
  *     <li><strong>Android</strong> (Harmony / Expat): {@link XMLConstants#FEATURE_SECURE_PROCESSING FSP} and the JAXP 1.5 {@code ACCESS_EXTERNAL_*} properties
  *         are not recognized, and libexpat enforces its own Billion Laughs check, so neither is applied. Two fixups are still needed: a subset-aware deny-all
  *         resolver (Expat ignores external fetches silently when no resolver is set, so an explicit one is required to <em>fail</em> on external entities while
- *         still letting an unused external subset load), and an {@link ExpatReaderWrapper} so the unsupported {@code namespace-prefixes} feature is rejected at
+ *         still letting an unused external subset load), and a {@link HardeningExpatXMLReader} so the unsupported {@code namespace-prefixes} feature is rejected at
  *         configuration time rather than mid-parse.</li>
  *     <li><strong>FSP</strong>: required on every other reader. It switches on the implementation's built-in security manager, which is what carries the
  *         processing limits.</li>
@@ -104,18 +104,19 @@ final class SAXParserHardener {
     }
 
     /**
-     * Wrapper around Android's {@code org.apache.harmony.xml.ExpatReader} that surfaces its {@code namespace-prefixes} limitation at configuration time.
+     * {@link HardeningXMLReader} for Android's {@code org.apache.harmony.xml.ExpatReader} that additionally surfaces its {@code namespace-prefixes} limitation at
+     * configuration time.
      *
      * <p>ExpatReader does not actually support the {@code namespace-prefixes} feature: enabling it is accepted by {@code setFeature} but fails later, during
      * {@code parse}, with a {@link SAXNotSupportedException}. Reporting the rejection eagerly from {@link #setFeature(String, boolean)} lets consumers that probe
      * the feature, such as Xalan's identity transformer, catch the exception and fall back instead of failing the whole parse.</p>
      */
-    static final class ExpatReaderWrapper extends DelegatingXMLReader {
+    static final class HardeningExpatXMLReader extends HardeningXMLReader {
 
         private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
 
-        ExpatReaderWrapper(final XMLReader delegate) {
-            super(delegate);
+        HardeningExpatXMLReader(final XMLReader delegate, final Resolvers.FallbackDenyResolver floor) {
+            super(delegate, floor);
         }
 
         @Override
@@ -162,13 +163,13 @@ final class SAXParserHardener {
         }
         if (ANDROID_EXPAT_READER.equals(reader.getClass().getName())) {
             // Expat ignores external fetches when no resolver is set; a subset-aware deny floor fails on external entities but lets an unused subset load.
-            // Reject the unsupported namespace-prefixes feature eagerly rather than mid-parse.
-            final ExpatReaderWrapper guarded = new ExpatReaderWrapper(reader);
+            // HardeningExpatXMLReader keeps that floor non-bypassable (routing a caller-set resolver, including SAXParser.parse's handler, through it) and rejects
+            // the unsupported namespace-prefixes feature eagerly rather than mid-parse.
             final DtdAwareDenyResolver floor = new DtdAwareDenyResolver();
+            final HardeningExpatXMLReader hardened = new HardeningExpatXMLReader(reader, floor);
             // The floor needs the DTD-boundary events to tell the subset apart from entities; Expat recognizes the lexical-handler property.
-            trySetProperty(guarded, LEXICAL_HANDLER_PROPERTY, floor);
-            // HardeningXMLReader keeps the floor non-bypassable and routes a caller-set resolver (including SAXParser.parse's handler) through it.
-            return new HardeningXMLReader(guarded, floor);
+            trySetProperty(hardened, LEXICAL_HANDLER_PROPERTY, floor);
+            return hardened;
         }
         // Required: enables the JDK XMLSecurityManager / Xerces SecurityManager limits.
         setFeature(reader, XMLConstants.FEATURE_SECURE_PROCESSING, true);

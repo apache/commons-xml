@@ -48,9 +48,12 @@ import org.w3c.dom.Element;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
+import org.xml.sax.helpers.XMLFilterImpl;
 
 /**
  * Shared fixtures for attack tests.
@@ -745,7 +748,31 @@ final class AttackTestSupport {
         factory.setNamespaceAware(true);
         final XMLReader reader = strictXMLReader(factory);
         suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-        return new SAXSource(IS_ANDROID ? new SAXParserHardener.ExpatReaderWrapper(reader) : reader, new InputSource(new StringReader(xml)));
+        // On Android the reader is Expat, which accepts namespace-prefixes at setFeature time but fails mid-parse; a permissive TrAX identity transform probes
+        // that feature, so wrap it to reject the feature eagerly (matching the production HardeningExpatXMLReader) while keeping the control permissive (no floor).
+        return new SAXSource(IS_ANDROID ? new PermissiveExpatReader(reader) : reader, new InputSource(new StringReader(xml)));
+    }
+
+    /**
+     * Test-only permissive counterpart of {@code SAXParserHardener.HardeningExpatXMLReader}: a pass-through Expat wrapper that rejects the
+     * {@code namespace-prefixes} feature eagerly (so a probing TrAX identity transformer falls back instead of failing the whole parse) but installs no deny-all
+     * resolver floor, so the unconfigured/positive controls stay permissive.
+     */
+    private static final class PermissiveExpatReader extends XMLFilterImpl {
+
+        private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
+
+        PermissiveExpatReader(final XMLReader parent) {
+            super(parent);
+        }
+
+        @Override
+        public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+            if (value && NAMESPACE_PREFIXES_FEATURE.equals(name)) {
+                throw new SAXNotSupportedException("ExpatReader does not support enabling the '" + NAMESPACE_PREFIXES_FEATURE + "' feature");
+            }
+            super.setFeature(name, value);
+        }
     }
 
     private static boolean probeAndroid() {

@@ -17,7 +17,16 @@
 
 package org.apache.commons.xml;
 
+import java.io.IOException;
+
+import org.xml.sax.ContentHandler;
+import org.xml.sax.DTDHandler;
 import org.xml.sax.EntityResolver;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 
 /**
@@ -29,9 +38,12 @@ import org.xml.sax.XMLReader;
  * reader's entity resolver, which would otherwise silently replace the floor. {@link #getEntityResolver()} reports the caller's resolver unwrapped.</p>
  *
  * <p>A path that needs a non-deny floor (e.g. one that also permits the external DTD subset) passes a {@link Resolvers.FallbackDenyResolver} subclass to the
- * two-argument constructor; a single stable floor instance also lets that subclass double as a {@link org.xml.sax.ext.LexicalHandler}.</p>
+ * two-argument constructor; a single stable floor instance also lets that subclass double as a {@link org.xml.sax.ext.LexicalHandler}. Every other method
+ * forwards to the wrapped delegate; subclasses (e.g. {@code HardeningExpatXMLReader}) add per-implementation fixups on top of the floor.</p>
  */
-final class HardeningXMLReader extends DelegatingXMLReader {
+class HardeningXMLReader implements XMLReader {
+
+    private final XMLReader delegate;
 
     private final Resolvers.FallbackDenyResolver floor;
 
@@ -40,9 +52,9 @@ final class HardeningXMLReader extends DelegatingXMLReader {
     }
 
     HardeningXMLReader(final XMLReader delegate, final Resolvers.FallbackDenyResolver floor) {
-        super(delegate);
+        this.delegate = delegate;
         this.floor = floor;
-        super.setEntityResolver(floor);
+        delegate.setEntityResolver(floor);
     }
 
     @Override
@@ -54,4 +66,66 @@ final class HardeningXMLReader extends DelegatingXMLReader {
     public EntityResolver getEntityResolver() {
         return floor.getDelegate();
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public ContentHandler getContentHandler() {
+        return delegate.getContentHandler();
+    }
+
+    @Override
+    public DTDHandler getDTDHandler() {
+        return delegate.getDTDHandler();
+    }
+
+    @Override
+    public ErrorHandler getErrorHandler() {
+        return delegate.getErrorHandler();
+    }
+
+    @Override
+    public boolean getFeature(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getFeature(name);
+    }
+
+    @Override
+    public Object getProperty(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getProperty(name);
+    }
+
+    @Override
+    public void parse(final InputSource input) throws IOException, SAXException {
+        delegate.parse(input);
+    }
+
+    @Override
+    public void parse(final String systemId) throws IOException, SAXException {
+        delegate.parse(systemId);
+    }
+
+    @Override
+    public void setContentHandler(final ContentHandler handler) {
+        delegate.setContentHandler(handler);
+    }
+
+    @Override
+    public void setDTDHandler(final DTDHandler handler) {
+        delegate.setDTDHandler(handler);
+    }
+
+    @Override
+    public void setErrorHandler(final ErrorHandler handler) {
+        delegate.setErrorHandler(handler);
+    }
+
+    @Override
+    public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setFeature(name, value);
+    }
+
+    @Override
+    public void setProperty(final String name, final Object value) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setProperty(name, value);
+    }
+    // </editor-fold>
 }

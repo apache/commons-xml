@@ -40,17 +40,7 @@ final class HardeningXMLInputFactory extends DelegatingXMLInputFactory {
 
     @Override
     public void setXMLResolver(final XMLResolver resolver) {
-        if (resolver instanceof Resolvers.FallbackDenyXMLResolver) {
-            // The caller supplies their own floor: hand it to the delegate as-is.
-            super.setXMLResolver(resolver);
-        } else {
-            final XMLResolver current = super.getXMLResolver();
-            if (current instanceof Resolvers.FallbackDenyXMLResolver) {
-                ((Resolvers.FallbackDenyXMLResolver) current).setDelegate(resolver);
-            } else {
-                super.setXMLResolver(new Resolvers.FallbackDenyXMLResolver(resolver));
-            }
-        }
+        setResolverProperty(XMLInputFactory.RESOLVER, resolver);
     }
 
     @Override
@@ -60,9 +50,8 @@ final class HardeningXMLInputFactory extends DelegatingXMLInputFactory {
 
     @Override
     public void setProperty(final String name, final Object value) {
-        if (XMLInputFactory.RESOLVER.equals(name)) {
-            setXMLResolver((XMLResolver) value);
-        } else if (isWstxResolverProperty(name) && (value instanceof XMLResolver || value == null)) {
+        // If a resolver property has a value of the wrong type, pass it to the delegate to generate an appropriate exception.
+        if (isResolverProperty(name) && (value == null || value instanceof XMLResolver)) {
             setResolverProperty(name, (XMLResolver) value);
         } else {
             super.setProperty(name, value);
@@ -71,12 +60,8 @@ final class HardeningXMLInputFactory extends DelegatingXMLInputFactory {
 
     @Override
     public Object getProperty(final String name) {
-        if (XMLInputFactory.RESOLVER.equals(name)) {
-            return getXMLResolver();
-        }
-        if (isWstxResolverProperty(name)) {
-            final Object current = super.getProperty(name);
-            return current instanceof XMLResolver ? unwrap((XMLResolver) current) : current;
+        if (isResolverProperty(name)) {
+            return unwrap((XMLResolver) super.getProperty(name));
         }
         return super.getProperty(name);
     }
@@ -101,8 +86,9 @@ final class HardeningXMLInputFactory extends DelegatingXMLInputFactory {
         }
     }
 
-    private static boolean isWstxResolverProperty(final String name) {
-        return StaxHardener.WSTX_DTD_RESOLVER.equals(name)
+    private static boolean isResolverProperty(final String name) {
+        return XMLInputFactory.RESOLVER.equals(name)
+                || StaxHardener.WSTX_DTD_RESOLVER.equals(name)
                 || StaxHardener.WSTX_ENTITY_RESOLVER.equals(name)
                 || StaxHardener.WSTX_UNDECLARED_ENTITY_RESOLVER.equals(name);
     }

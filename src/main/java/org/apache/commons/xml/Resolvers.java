@@ -206,7 +206,7 @@ final class Resolvers {
      * wrapper routes a caller-set resolver through {@link #setDelegate} rather than letting it replace the floor. A caller opts a specific entity in by returning
      * a non-{@code null} result; anything left unresolved goes to {@link #onUnresolved}, which denies by default. Subclasses override {@code onUnresolved} to give
      * a hook a different unresolved policy (e.g. return an empty input for the external DTD subset, or for undeclared entities) while keeping the caller-delegate
-     * behaviour.</p>
+     * behavior.</p>
      */
     static class FallbackDenyXMLResolver implements XMLResolver {
 

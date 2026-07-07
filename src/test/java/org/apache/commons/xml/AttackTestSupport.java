@@ -55,7 +55,7 @@ import org.xml.sax.helpers.DefaultHandler;
 /**
  * Shared fixtures for attack tests.
  *
- * <p>The hardened-side helpers come in three flavours, distinguished by their suffix:</p>
+ * <p>The hardened-side helpers come in three flavors, distinguished by their suffix:</p>
  *
  * <ul>
  *   <li>{@code assert*Blocks(...)} runs the payload through a hardened factory from {@link XmlFactories} and asserts the parse throws. Used when the hardening
@@ -453,7 +453,7 @@ final class AttackTestSupport {
     /**
      * Asserts a hardened StAX parse of the payload throws.
      *
-     * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; both flavours are exercised and either must
+     * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; both flavors are exercised and either must
      * throw.</p>
      */
     static void assertStaxBlocks(final String payload) {
@@ -464,7 +464,7 @@ final class AttackTestSupport {
     /**
      * Asserts a hardened StAX parse completes without throwing and without leaked content.
      *
-     * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; both flavours are exercised. Use this when the
+     * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; both flavors are exercised. Use this when the
      * hardening guarantee is "the parse succeeds but never resolves the external resource", e.g. when the JDK's {@code ignore-external-dtd} property silently
      * skips the external subset.</p>
      */

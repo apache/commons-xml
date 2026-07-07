@@ -30,7 +30,7 @@ import javax.xml.stream.XMLStreamException;
  * probes which properties each factory accepts and adapts:</p>
  * <ul>
  *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(XMLInputFactory)}, which sets both the JDK and the Woodstox limit properties;
- *         each implementation honours its own and rejects the other's.</li>
+ *         each implementation honors its own and rejects the other's.</li>
  *     <li><strong>External DTD subset</strong>: skipped via Zephyr's {@value #ZEPHYR_IGNORE_EXTERNAL_DTD} (best-effort), so a DOCTYPE-only document parses
  *         without a fetch attempt instead of tripping the deny-all resolver below. Woodstox skips it through {@value #WSTX_DTD_RESOLVER} instead.</li>
  *     <li><strong>External entities</strong>: denied through a non-removable {@link Resolvers.FallbackDenyXMLResolver} floor on the entity-resolution hook,

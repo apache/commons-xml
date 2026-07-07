@@ -26,7 +26,7 @@ import org.xml.sax.EntityResolver;
 /**
  * {@link DocumentBuilderFactory} wrapper that keeps a deny-all {@link EntityResolver} floor on every {@link DocumentBuilder} produced.
  *
- * <p>Wraps each produced builder in a {@link HardeningDocumentBuilder}; required when the underlying factory carries no resolver of its own and does not honour
+ * <p>Wraps each produced builder in a {@link HardeningDocumentBuilder}; required when the underlying factory carries no resolver of its own and does not honor
  * JAXP 1.5 {@code ACCESS_EXTERNAL_*} (e.g. the external Xerces distribution). A caller-set resolver is routed through the floor rather than replacing it. Kept
  * as a standalone wrapper so any hardener can reuse the floor.</p>
  */

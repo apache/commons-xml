@@ -32,7 +32,7 @@ import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 
 /**
- * Verifies that an implementation which does not honour the required secure-processing feature surfaces {@link IllegalStateException} with a message naming the
+ * Verifies that an implementation which does not honor the required secure-processing feature surfaces {@link IllegalStateException} with a message naming the
  * class.
  */
 class UnsupportedXmlImplementationTest {

@@ -41,7 +41,7 @@ import org.xml.sax.EntityResolver;
  *         DOCTYPE-only document parses without a fetch attempt. If not supported, the fetch will throw instead, due to the following settings.</li>
  *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(DocumentBuilderFactory)}, which adapts to the JDK attribute limits or Xerces'
  *         {@code SecurityManager} as appropriate.</li>
- *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong>: the dividing capability. Implementations that honour it (the JDK-internal Xerces) block external fetches
+ *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong>: the dividing capability. Implementations that honor it (the JDK-internal Xerces) block external fetches
  *         through the JAXP 1.5 properties and are returned as-is. Implementations that reject it (the external Xerces distribution) are wrapped so a deny-all
  *         {@link EntityResolver} is installed on every {@link DocumentBuilder} produced.</li>
  * </ul>
@@ -51,7 +51,7 @@ final class DocumentBuilderHardener {
     /**
      * Wrapper that sets a deny-all {@link EntityResolver} on every {@link DocumentBuilder} produced.
      *
-     * <p>Required for implementations that do not honour JAXP 1.5 {@code ACCESS_EXTERNAL_*} (the external Xerces distribution): the factory carries no resolver
+     * <p>Required for implementations that do not honor JAXP 1.5 {@code ACCESS_EXTERNAL_*} (the external Xerces distribution): the factory carries no resolver
      * of its own, so it has to be set on each builder.</p>
      */
     private static final class HardeningDocumentBuilderFactory extends DelegatingDocumentBuilderFactory {

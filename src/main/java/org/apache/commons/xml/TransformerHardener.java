@@ -43,7 +43,7 @@ import javax.xml.transform.sax.SAXTransformerFactory;
  *         hardening surface is reachable only through a vendor API.</li>
  *     <li><strong>FSP</strong> ({@link XMLConstants#FEATURE_SECURE_PROCESSING}): required. On XSLTC it enables the runtime evaluator limits; on Xalan it disables
  *         reflection-based extension functions.</li>
- *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(TransformerFactory)}. XSLTC honours the JDK attribute limits; Xalan ignores them
+ *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(TransformerFactory)}. XSLTC honors the JDK attribute limits; Xalan ignores them
  *         (its caps come from FSP).</li>
  *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong> (set to {@code ""}): required on XSLTC. XSLTC copies this factory attribute onto the reader that parses the
  *         stylesheet ({@code Util.getInputSource}), overwriting the {@code ACCESS_EXTERNAL_DTD} the wrapper's hardened reader had already set; without it a

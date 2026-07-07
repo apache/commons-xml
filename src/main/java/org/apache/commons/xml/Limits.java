@@ -39,7 +39,7 @@ import org.xml.sax.XMLReader;
  * <p>The numeric defaults below are mirrored from the {@code secureValue} column of {@code jdk.xml.internal.XMLSecurityManager.Limit} in
  * <strong>JDK 25</strong>.</p>
  *
- * <p>Each limit can be overridden at runtime via the same JDK system property the JDK itself honours, so applications already tuning the JDK parser get the
+ * <p>Each limit can be overridden at runtime via the same JDK system property the JDK itself honors, so applications already tuning the JDK parser get the
  * same value applied to the bundled Xerces and Woodstox parsers without further configuration.</p>
  */
 final class Limits {
@@ -183,7 +183,7 @@ final class Limits {
      */
     private static final String SP_ELEMENT_ATTRIBUTE_LIMIT = "jdk.xml.elementAttributeLimit";
     /**
-     * JDK system property name for the entity-expansion limit; same name the JDK Zephyr/Xerces stack honours.
+     * JDK system property name for the entity-expansion limit; same name the JDK Zephyr/Xerces stack honors.
      */
     private static final String SP_ENTITY_EXPANSION_LIMIT = "jdk.xml.entityExpansionLimit";
     /**
@@ -341,7 +341,7 @@ final class Limits {
     /**
      * Best-effort application of the JDK processing limits to a {@link TransformerFactory}.
      *
-     * <p>The stock JDK's XSLTC honours the JDK limit attributes, so this pins them to JDK 25 secure values; other implementations (Apache Xalan) reject the
+     * <p>The stock JDK's XSLTC honors the JDK limit attributes, so this pins them to JDK 25 secure values; other implementations (Apache Xalan) reject the
      * attributes and their caps come from {@link javax.xml.XMLConstants#FEATURE_SECURE_PROCESSING} instead. Neither path throws if the implementation declines a
      * limit.</p>
      *
@@ -354,7 +354,7 @@ final class Limits {
     /**
      * Best-effort application of the processing limits to an {@link XMLInputFactory}, regardless of implementation.
      *
-     * <p>The JDK's Zephyr honours the JDK URL limit properties; Woodstox honours its own {@code com.ctc.wstx.*} properties. Each implementation rejects the
+     * <p>The JDK's Zephyr honors the JDK URL limit properties; Woodstox honors its own {@code com.ctc.wstx.*} properties. Each implementation rejects the
      * other's, so both sets are applied best-effort and the rejected ones are skipped silently.</p>
      *
      * @param factory The target factory to modify.

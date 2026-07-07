@@ -53,7 +53,7 @@ import org.xml.sax.ext.LexicalHandler;
  *         DOCTYPE-only document parses without a fetch attempt. If not supported, the fetch will throw instead, due to the following settings.</li>
  *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(XMLReader)}, which adapts to the JDK limit properties or Xerces'
  *         {@code SecurityManager} as appropriate.</li>
- *     <li><strong>{@code ACCESS_EXTERNAL_*}</strong>: the dividing capability. Readers that honour it (the JDK-internal Xerces) block external fetches through
+ *     <li><strong>{@code ACCESS_EXTERNAL_*}</strong>: the dividing capability. Readers that honor it (the JDK-internal Xerces) block external fetches through
  *         the JAXP 1.5 properties and are returned as-is. Readers that reject it (the external Xerces distribution) get a deny-all {@link EntityResolver}
  *         installed instead.</li>
  * </ul>

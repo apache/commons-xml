@@ -62,7 +62,7 @@ final class HardeningXMLInputFactory extends DelegatingXMLInputFactory {
     public void setProperty(final String name, final Object value) {
         if (XMLInputFactory.RESOLVER.equals(name)) {
             setXMLResolver((XMLResolver) value);
-        } else if (isWstxResolverProperty(name)) {
+        } else if (isWstxResolverProperty(name) && (value instanceof XMLResolver || value == null)) {
             setResolverProperty(name, (XMLResolver) value);
         } else {
             super.setProperty(name, value);
@@ -75,7 +75,8 @@ final class HardeningXMLInputFactory extends DelegatingXMLInputFactory {
             return getXMLResolver();
         }
         if (isWstxResolverProperty(name)) {
-            return unwrap((XMLResolver) super.getProperty(name));
+            final Object current = super.getProperty(name);
+            return current instanceof XMLResolver ? unwrap((XMLResolver) current) : current;
         }
         return super.getProperty(name);
     }

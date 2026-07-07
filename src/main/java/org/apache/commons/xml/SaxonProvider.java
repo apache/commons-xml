@@ -21,11 +21,12 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.xpath.XPathFactory;
 
+import org.xml.sax.XMLReader;
+
 import net.sf.saxon.Configuration;
 import net.sf.saxon.jaxp.SaxonTransformerFactory;
 import net.sf.saxon.lib.Feature;
 import net.sf.saxon.xpath.XPathFactoryImpl;
-import org.xml.sax.XMLReader;
 
 /**
  * Hardening recipes for Saxon-HE ({@code net.sf.saxon:Saxon-HE}).
@@ -93,7 +94,7 @@ final class SaxonProvider {
     static TransformerFactory configure(final TransformerFactory factory) {
         try {
             return SaxonProviderConfigurer.configure(factory);
-        } catch (LinkageError e) {
+        } catch (final LinkageError e) {
             // Unlikely, but protects method execution from missing optional dependency
             throw new IllegalStateException(e);
         }
@@ -102,7 +103,7 @@ final class SaxonProvider {
     static XPathFactory configure(final XPathFactory factory) {
         try {
             return SaxonProviderConfigurer.configure(factory);
-        } catch (LinkageError e) {
+        } catch (final LinkageError e) {
             // Unlikely, but protects method execution from missing optional dependency
             throw new IllegalStateException(e);
         }

@@ -732,7 +732,7 @@ final class AttackTestSupport {
         factory.setNamespaceAware(true);
         final XMLReader reader = strictXMLReader(factory);
         suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-        return new SAXSource(IS_ANDROID ? new AndroidProvider.GuardedXMLReader(reader) : reader, new InputSource(new StringReader(xml)));
+        return new SAXSource(IS_ANDROID ? new SAXParserHardener.ExpatReaderWrapper(reader) : reader, new InputSource(new StringReader(xml)));
     }
 
     private static boolean probeAndroid() {
@@ -782,7 +782,7 @@ final class AttackTestSupport {
 
     /** Builds a {@link StreamSource} backed by a {@link StringReader} over the payload. */
     static StreamSource streamSource(final String xml) {
-        StreamSource streamSource = new StreamSource(new StringReader(xml));
+        final StreamSource streamSource = new StreamSource(new StringReader(xml));
         streamSource.setSystemId("test:fixture");
         return streamSource;
     }
@@ -854,7 +854,7 @@ final class AttackTestSupport {
     /**
      * Installs {@link #STRICT_REPORTER} as the error handler on {@code reader} and returns it; for raw-reader paths.
      */
-    private static XMLReader strictXMLReader(final XMLReader reader) {
+    static XMLReader strictXMLReader(final XMLReader reader) {
         reader.setErrorHandler(STRICT_REPORTER);
         return reader;
     }

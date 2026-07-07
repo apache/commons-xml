@@ -32,7 +32,8 @@ import org.xml.sax.SAXNotSupportedException;
 
 /**
  * {@link Validator} wrapper that rewrites the Source on every {@link Validator#validate(Source)} and {@link Validator#validate(Source, Result)} call through
- * {@link XmlFactories#harden(Source)} before delegating.
+ * {@link XmlFactories#harden(Source)} before delegating, and installs a deny-all {@link LSResourceResolver} so {@code xsi:schemaLocation} is not resolved at
+ * validation time.
  */
 final class HardeningValidator extends Validator {
 
@@ -40,6 +41,9 @@ final class HardeningValidator extends Validator {
 
     HardeningValidator(final Validator delegate) {
         this.delegate = delegate;
+        // Block xsi:schemaLocation resolution; neither the JDK nor Xerces reliably propagates the factory's resolver to its Validators. A caller may re-enable
+        // specific lookups by setting their own resolver afterwards.
+        delegate.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
     }
 
     @Override

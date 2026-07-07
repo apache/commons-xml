@@ -15,8 +15,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache.commons</groupId>
@@ -31,25 +31,15 @@ limitations under the License.
   <description>Apache Commons XML provides secure-by-default JAXP factory creation, abstracting over
     implementation-specific XXE hardening differences between the stock JDK and external JAXP implementations
     (Android, Apache Xalan, Apache Xerces, Woodstox, Saxon-HE).</description>
-
-  <developers>
-    <developer>
-      <id>ppkarwasz</id>
-      <name>Piotr P. Karwasz</name>
-      <email>pkarwasz-pom@apache.org</email>
-    </developer>
-  </developers>
-
   <scm>
     <connection>scm:git:https://gitbox.apache.org/repos/asf/commons-xml.git</connection>
     <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/commons-xml.git</developerConnection>
     <url>https://gitbox.apache.org/repos/asf?p=commons-xml.git</url>
     <tag>rel/commons-xml-${project.version}</tag>
   </scm>
-
   <properties>
     <!-- Release-related properties -->
-    <commons.release.version>0.1.1</commons.release.version>
+    <commons.release.version>0.1.0</commons.release.version>
     <commons.release.desc>(Java 8+)</commons.release.desc>
     <commons.rc.version>RC1</commons.rc.version>
     <!-- japicmp baseline: disable for first release
@@ -62,7 +52,6 @@ limitations under the License.
     <commons.jira.id>COMMONSXML</commons.jira.id>
     <!-- Sandbox component: publish the site under the sandbox tree (the parent defaults to proper/). -->
     <commons.scmPubUrl>https://svn.apache.org/repos/infra/websites/production/commons/content/sandbox/commons-xml</commons.scmPubUrl>
-
     <!-- OSGi bundle metadata: override commons-parent's org.apache.commons.* defaults. -->
     <commons.osgi.symbolicName>org.apache.commons.xml</commons.osgi.symbolicName>
     <commons.osgi.export>org.apache.commons.xml.*;version=${project.version};-noimport:=true</commons.osgi.export>
@@ -72,18 +61,15 @@ limitations under the License.
       *
     </commons.osgi.import>
     <project.build.outputTimestamp>2026-04-22T00:00:00Z</project.build.outputTimestamp>
-
     <!-- Java baseline -->
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-
     <!-- Optional JAXP implementations used by bundled providers. -->
     <commons.saxon.version>12.9</commons.saxon.version>
     <commons.woodstox.version>7.1.1</commons.woodstox.version>
     <commons.xalan.version>2.7.3</commons.xalan.version>
     <commons.xerces.version>2.12.2</commons.xerces.version>
   </properties>
-
   <dependencies>
     <!--
       Saxon-HE supplies types we reference at compile time (the Saxon provider). It is not part of the consumer
@@ -102,11 +88,39 @@ limitations under the License.
       <scope>test</scope>
     </dependency>
   </dependencies>
-
   <build>
-    <defaultGoal>clean verify</defaultGoal>
+    <defaultGoal>clean checkstyle:check spotbugs:check pmd:check javadoc:javadoc verify</defaultGoal>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <configuration>
+            <configLocation>${basedir}/src/conf/checkstyle.xml</configLocation>
+            <enableRulesSummary>false</enableRulesSummary>
+            <!-- Later:
+            <includeTestSourceDirectory>true</includeTestSourceDirectory> -->
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-maven-plugin</artifactId>
+          <configuration>
+            <excludeFilterFile>${basedir}/src/conf/spotbugs-exclude-filter.xml</excludeFilterFile>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-pmd-plugin</artifactId>
+          <configuration>
+            <rulesets>
+              <ruleset>src/conf/maven-pmd-plugin.xml</ruleset>
+            </rulesets>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
-
       <!--
         Run the test suite seven times, each with a distinct JAXP combination:
 
@@ -144,7 +158,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-saxon</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/saxon</reportsDirectory>
               <!-- Saxon contributes TrAX (transformer + stylesheet) and XPath; xpath3 covers Saxon-only XPath 3.1 functions. -->
@@ -153,7 +169,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-saxon-xerces</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/saxon-xerces</reportsDirectory>
               <!-- Same groups as test-saxon, but with Apache Xerces also visible to Saxon's SAX-provider lookup. -->
@@ -169,7 +187,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-stockjdk</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/stockjdk</reportsDirectory>
               <!-- Run every tagged and untagged test except xpath3, which needs Saxon on the classpath. -->
@@ -181,7 +201,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-woodstox</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/woodstox</reportsDirectory>
               <!-- Woodstox only contributes StAX. -->
@@ -200,7 +222,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-xalan</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xalan</reportsDirectory>
               <!-- Xalan contributes TrAX and XPath. -->
@@ -224,7 +248,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-xalan-xerces</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xalan-xerces</reportsDirectory>
               <!-- Same groups as test-xalan, but with Apache Xerces winning Xalan's internal SAX-provider lookup. -->
@@ -253,7 +279,9 @@ limitations under the License.
           </execution>
           <execution>
             <id>test-xerces</id>
-            <goals><goal>test</goal></goals>
+            <goals>
+              <goal>test</goal>
+            </goals>
             <configuration>
               <reportsDirectory>${project.build.directory}/surefire-reports/xerces</reportsDirectory>
               <!-- Xerces only contributes DOM/SAX/Schema; the rest is JDK-bundled and already covered by test-stockjdk. -->
@@ -272,7 +300,6 @@ limitations under the License.
           </execution>
         </executions>
       </plugin>
-
       <!-- Do not publish a test-jar: the test classes are not part of the consumer contract. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -284,7 +311,6 @@ limitations under the License.
           </execution>
         </executions>
       </plugin>
-
       <!--
         commons-parent's create-source-jar execution attaches both the main sources (jar-no-fork) and the test
         sources (test-jar-no-fork) in one execution. Disable it and re-bind a main-sources-only execution, so the
@@ -307,7 +333,6 @@ limitations under the License.
           </execution>
         </executions>
       </plugin>
-
       <!-- jdeps makes Saxon.HE a hard requires; flip it to static (optional). The trailing * keeps the rest. -->
       <plugin>
         <groupId>org.moditect</groupId>
@@ -328,10 +353,36 @@ limitations under the License.
           </execution>
         </executions>
       </plugin>
-
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
     </plugins>
   </build>
-
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <configuration>
+          <excludeFilterFile>${basedir}/src/conf/spotbugs-exclude-filter.xml</excludeFilterFile>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <configuration>
+          <rulesets>
+            <ruleset>src/conf/maven-pmd-plugin.xml</ruleset>
+          </rulesets>
+        </configuration>
+      </plugin>
+    </plugins>
+  </reporting>
   <profiles>
     <!--
       Regression guard for the generated OSGi and JPMS descriptors.
@@ -364,7 +415,6 @@ limitations under the License.
               </execution>
             </executions>
           </plugin>
-
           <!-- Run DescriptorIT against the packaged jar; no OSGi framework or separate JPMS module needed. -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -402,4 +452,26 @@ limitations under the License.
       </properties>
     </profile>
   </profiles>
+  <developers>
+    <developer>
+      <id>ppkarwasz</id>
+      <name>Piotr P. Karwasz</name>
+      <email>pkarwasz-pom@apache.org</email>
+    </developer>
+    <developer>
+      <id>ggregory</id>
+      <name>Gary Gregory</name>
+      <email>ggregory at apache.org</email>
+      <url>https://www.garygregory.com</url>
+      <organization>The Apache Software Foundation</organization>
+      <organizationUrl>https://www.apache.org/</organizationUrl>
+      <roles>
+        <role>PMC Member</role>
+      </roles>
+      <timezone>America/New_York</timezone>
+      <properties>
+        <picUrl>https://people.apache.org/~ggregory/img/garydgregory80.png</picUrl>
+      </properties>
+    </developer>
+  </developers>
 </project>

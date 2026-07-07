@@ -53,3 +53,11 @@ Guidance for AI coding agents working in this repository.
 ### Commits
 
 - Use the `Assisted-By:` trailer (not `Co-Authored-By:`).
+
+## Security
+
+Security model: [SECURITY.md](./SECURITY.md)
+
+Agents that scan this repository should consult `SECURITY.md` for the
+project's threat model, in-scope / out-of-scope declarations, and known
+non-findings before reporting issues.

@@ -18,7 +18,6 @@
 package org.apache.commons.xml;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.transform.TransformerFactory;
@@ -42,6 +41,9 @@ final class JaxpSetters {
     private interface ThrowingAction {
         void run() throws Exception;
     }
+    private static final String KIND_ATTRIBUTE = "attribute";
+    private static final String KIND_FEATURE = "feature";
+    private static final String KIND_PROPERTY = "property";
 
     private static void apply(final Object factory, final String kind, final String name, final ThrowingAction action) {
         try {
@@ -52,67 +54,131 @@ final class JaxpSetters {
     }
 
     static void setAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
-        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
-    }
-
-    static void setAttribute(final TransformerFactory factory, final String attribute, final Object value) {
-        apply(factory, "attribute", attribute, () -> factory.setAttribute(attribute, value));
+        apply(factory, KIND_ATTRIBUTE, attribute, () -> factory.setAttribute(attribute, value));
     }
 
     static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final SAXParserFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final TransformerFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final XPathFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final SchemaFactory factory, final String feature, final boolean value) {
-        apply(factory, "feature", feature, () -> factory.setFeature(feature, value));
+        apply(factory, KIND_FEATURE, feature, () -> factory.setFeature(feature, value));
     }
 
     static void setFeature(final Validator validator, final String feature, final boolean value) {
-        apply(validator, "feature", feature, () -> validator.setFeature(feature, value));
+        apply(validator, KIND_FEATURE, feature, () -> validator.setFeature(feature, value));
     }
 
     static void setFeature(final ValidatorHandler handler, final String feature, final boolean value) {
-        apply(handler, "feature", feature, () -> handler.setFeature(feature, value));
+        apply(handler, KIND_FEATURE, feature, () -> handler.setFeature(feature, value));
     }
 
     static void setFeature(final XMLReader reader, final String feature, final boolean value) {
-        apply(reader, "feature", feature, () -> reader.setFeature(feature, value));
+        apply(reader, KIND_FEATURE, feature, () -> reader.setFeature(feature, value));
     }
 
-    static void setProperty(final XMLInputFactory factory, final String property, final Object value) {
-        apply(factory, "property", property, () -> factory.setProperty(property, value));
+    static void setOptionalAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        trySetAttribute(factory, attribute, value);
     }
 
-    static void setProperty(final SAXParser parser, final String property, final Object value) {
-        apply(parser, "property", property, () -> parser.setProperty(property, value));
+    static void setOptionalAttribute(final TransformerFactory factory, final String attribute, final Object value) {
+        try {
+            factory.setAttribute(attribute, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this attribute.
+        }
     }
 
-    static void setProperty(final XMLReader reader, final String property, final Object value) {
-        apply(reader, "property", property, () -> reader.setProperty(property, value));
+    static void setOptionalFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
+        try {
+            factory.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this feature.
+        }
     }
 
-    static void setProperty(final SchemaFactory factory, final String property, final Object value) {
-        apply(factory, "property", property, () -> factory.setProperty(property, value));
+    static void setOptionalFeature(final XMLReader reader, final String feature, final boolean value) {
+        try {
+            reader.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this feature.
+        }
     }
 
-    static void setProperty(final Validator validator, final String property, final Object value) {
-        apply(validator, "property", property, () -> validator.setProperty(property, value));
+    static void setOptionalFeature(final XPathFactory factory, final String feature, final boolean value) {
+        try {
+            factory.setFeature(feature, value);
+        } catch (final Exception e) {
+            // Ignored: the implementation does not recognize this feature.
+        }
     }
 
-    static void setProperty(final ValidatorHandler handler, final String property, final Object value) {
-        apply(handler, "property", property, () -> handler.setProperty(property, value));
+    static void setOptionalProperty(final XMLInputFactory factory, final String property, final Object value) {
+        trySetProperty(factory, property, value);
+    }
+
+    /**
+     * Sets an attribute on a {@link DocumentBuilderFactory} and returns whether the implementation accepted it. Some implementations may reject certain
+     * attributes, in which case this method will return {@code false}.
+     *
+     * @param factory   The target factory on which to set the attribute.
+     * @param attribute The name of the attribute to set.
+     * @param value     The value of the attribute to set.
+     * @return {@code true} if the attribute was applied, {@code false} if the implementation rejected it.
+     */
+    static boolean trySetAttribute(final DocumentBuilderFactory factory, final String attribute, final Object value) {
+        try {
+            factory.setAttribute(attribute, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Sets a property on an {@link XMLReader} and returns whether the implementation accepted it.
+     *
+     * @param reader   The target reader on which to set the property.
+     * @param property The name of the property to set.
+     * @param value    The value of the property to set.
+     * @return {@code true} if the property was applied, {@code false} if the implementation rejected it.
+     */
+    static boolean trySetProperty(final XMLReader reader, final String property, final Object value) {
+        try {
+            reader.setProperty(property, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Sets a property on an {@link XMLInputFactory} and returns whether the implementation accepted it.
+     *
+     * @param factory   The target factory on which to set the property.
+     * @param property The name of the property to set.
+     * @param value     The value of the property to set.
+     * @return {@code true} if the property was applied, {@code false} if the implementation rejected it.
+     */
+    static boolean trySetProperty(final XMLInputFactory factory, final String property, final Object value) {
+        try {
+            factory.setProperty(property, value);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
     }
 
     private JaxpSetters() {

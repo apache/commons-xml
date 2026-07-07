@@ -16,14 +16,15 @@
  */
 
 import com.android.build.api.dsl.ManagedVirtualDevice
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
     id("com.android.library") version "8.6.1"
     id("de.mannodermaus.android-junit5") version "1.14.0.0"
 }
 
-val libraryVersion = "0.2.0-SNAPSHOT"
-val libraryJar = rootProject.file("../target/copernik-xml-factory-${libraryVersion}.jar")
+val libraryVersion = "0.1.0-SNAPSHOT"
+val libraryJar = rootProject.file("../target/commons-xml-${libraryVersion}.jar")
 
 android {
     namespace = "org.apache.commons.xml.androidtests"

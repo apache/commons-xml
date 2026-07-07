@@ -94,7 +94,7 @@ final class SaxonProvider {
     static TransformerFactory configure(final TransformerFactory factory) {
         try {
             return SaxonProviderConfigurer.configure(factory);
-        } catch (LinkageError e) {
+        } catch (final LinkageError e) {
             // Unlikely, but protects method execution from missing optional dependency
             throw new IllegalStateException(e);
         }
@@ -103,7 +103,7 @@ final class SaxonProvider {
     static XPathFactory configure(final XPathFactory factory) {
         try {
             return SaxonProviderConfigurer.configure(factory);
-        } catch (LinkageError e) {
+        } catch (final LinkageError e) {
             // Unlikely, but protects method execution from missing optional dependency
             throw new IllegalStateException(e);
         }

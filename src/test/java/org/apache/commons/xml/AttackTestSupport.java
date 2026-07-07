@@ -782,7 +782,7 @@ final class AttackTestSupport {
 
     /** Builds a {@link StreamSource} backed by a {@link StringReader} over the payload. */
     static StreamSource streamSource(final String xml) {
-        StreamSource streamSource = new StreamSource(new StringReader(xml));
+        final StreamSource streamSource = new StreamSource(new StringReader(xml));
         streamSource.setSystemId("test:fixture");
         return streamSource;
     }

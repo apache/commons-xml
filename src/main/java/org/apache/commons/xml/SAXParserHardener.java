@@ -158,7 +158,7 @@ final class SAXParserHardener {
      */
     static XMLReader hardenReader(final XMLReader reader) {
         if (reader instanceof HardeningXMLReader) {
-            // Already hardened (e.g. handed back through XmlFactories.harden(XMLReader)); the floor is already in place.
+            // Already hardened (for example, handed back through XmlFactories.harden(XMLReader)); the floor is already in place.
             return reader;
         }
         if (ANDROID_EXPAT_READER.equals(reader.getClass().getName())) {

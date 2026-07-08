@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
  * Checks that a plain document without a {@code DOCTYPE} declaration parses cleanly through every hardened JAXP surface.
  *
  * <p>This is the realistic 99% case for hardened input; the hardening contract being verified is "documents without a DOCTYPE parse cleanly through every
- * JAXP surface" so accidental tightening (e.g. a resolver that refuses the synthetic-external-subset hook) is caught.</p>
+ * JAXP surface" so accidental tightening (for example, a resolver that refuses the synthetic-external-subset hook) is caught.</p>
  */
 class NoDoctypeTest {
 

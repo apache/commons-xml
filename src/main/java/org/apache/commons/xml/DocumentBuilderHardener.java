@@ -67,7 +67,7 @@ final class DocumentBuilderHardener {
         // ACCESS_EXTERNAL_* support is the dividing capability between JAXP 1.5 implementations and older ones.
         if (trySetAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "")
                 && trySetAttribute(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")) {
-            // Honoured: the JAXP 1.5 properties block external fetches, so the bare factory is already hardened.
+            // Honored: the JAXP 1.5 properties block external fetches, so the bare factory is already hardened.
             return factory;
         }
         // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; install a deny-all resolver on every DocumentBuilder.

@@ -154,7 +154,7 @@ final class SAXParserHardener {
      */
     static XMLReader hardenReader(final XMLReader reader) {
         if (reader instanceof ExpatReaderWrapper) {
-            // Already hardened (e.g. handed back through XmlFactories.harden(XMLReader)); applying the Expat fixups again would be redundant.
+            // Already hardened (for example, handed back through XmlFactories.harden(XMLReader)); applying the Expat fixups again would be redundant.
             return reader;
         }
         if (ANDROID_EXPAT_READER.equals(reader.getClass().getName())) {

@@ -118,7 +118,7 @@ class DescriptorIT {
     }
 
     /**
-     * Returns whether {@code pkg} is exported by an OSGi system bundle, i.e. it sits under one of {@link #PLATFORM_PACKAGE_PREFIXES}.
+     * Returns whether {@code pkg} is exported by an OSGi system bundle, that is, it sits under one of {@link #PLATFORM_PACKAGE_PREFIXES}.
      */
     private static boolean isPlatformPackage(final String pkg) {
         for (final String prefix : PLATFORM_PACKAGE_PREFIXES) {
@@ -150,7 +150,7 @@ class DescriptorIT {
     }
 
     /**
-     * Returns the package name of a clause, i.e. everything before its first {@code ;} attribute separator.
+     * Returns the package name of a clause, that is, everything before its first {@code ;} attribute separator.
      */
     private static String packageName(final String clause) {
         final int semicolon = clause.indexOf(';');

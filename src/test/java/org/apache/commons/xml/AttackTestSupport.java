@@ -60,11 +60,11 @@ import org.xml.sax.helpers.DefaultHandler;
  *   <li>{@code assert*Blocks(...)} runs the payload through a hardened factory from {@link XmlFactories} and asserts the parse throws. Used when the hardening
  *       layer is expected to reject the attack outright.</li>
  *   <li>{@code assert*DoesNotLeak(...)} runs the payload through a hardened factory and asserts the parse completes without throwing and without producing the
- *       {@link #LEAKED_MARKER} string. Used when the hardening contract guarantees the parse succeeds but never resolves the external resource (e.g.
+ *       {@link #LEAKED_MARKER} string. Used when the hardening contract guarantees the parse succeeds but never resolves the external resource (for example,
  *       {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skipping the external subset, with the body's undeclared entity reference dropped per XML 1.0
  *       §4.1).</li>
  *   <li>{@code assert*BlocksOrDoesNotLeak(...)} accepts either of the previous two outcomes. Used where the same hardening contract surfaces differently across
- *       providers (e.g. stock-JDK XSLTC throws via {@code ACCESS_EXTERNAL_DTD} while Apache Xalan silently skips because its source-rewrite routes parsing
+ *       providers (for example, stock-JDK XSLTC throws via {@code ACCESS_EXTERNAL_DTD} while Apache Xalan silently skips because its source-rewrite routes parsing
  *       through a {@code XERCES_LOAD_EXTERNAL_DTD=false} reader).</li>
  * </ul>
  *
@@ -185,7 +185,7 @@ final class AttackTestSupport {
      * Asserts a hardened DOM parse completes without throwing and without leaked content.
      *
      * <p>{@link DocumentBuilder#parse(InputSource)} via {@link XmlFactories#newDocumentBuilderFactory()}; use this when the hardening guarantee is "the parse
-     * succeeds but never resolves the external resource", e.g. when {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skips the external subset.</p>
+     * succeeds but never resolves the external resource", for example, when {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skips the external subset.</p>
      */
     static void assertDomDoesNotLeak(final String payload) {
         assertNoLeakStrict(() -> domParseAndCaptureText(payload), "DOM");
@@ -204,7 +204,7 @@ final class AttackTestSupport {
      * Skeleton for every {@code assert*BlocksOrDoesNotLeak} helper.
      *
      * <p>Treats a thrown exception of one of the {@code expected} types as "hardening blocked at parse" (acceptable); otherwise asserts the captured output
-     * omits {@link #LEAKED_MARKER}. A throw whose type does not match {@code expected} fails the test, so unrelated failures (e.g. a {@link HardeningException}
+     * omits {@link #LEAKED_MARKER}. A throw whose type does not match {@code expected} fails the test, so unrelated failures (for example, a {@link HardeningException}
      * because no recipe matched the JAXP implementation) cannot be silently accepted as a clean block.</p>
      *
      * @param action      the parse to execute, returning the captured output text checked for {@link #LEAKED_MARKER}.
@@ -405,7 +405,7 @@ final class AttackTestSupport {
      * Asserts a hardened SAX parse completes without throwing and without leaked content.
      *
      * <p>{@link XMLReader#parse(InputSource)} on a parser from {@link XmlFactories#newSAXParserFactory()}; use this when the hardening guarantee is "the parse
-     * succeeds but never resolves the external resource", e.g. when {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skips the external subset.</p>
+     * succeeds but never resolves the external resource", for example, when {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skips the external subset.</p>
      */
     static void assertSaxDoesNotLeak(final String payload) {
         assertNoLeakStrict(() -> captureCharacters(strictXMLReader(XmlFactories.newSAXParserFactory()), payload), "SAX");
@@ -442,7 +442,7 @@ final class AttackTestSupport {
      * Asserts a hardened Schema compilation completes without throwing.
      *
      * <p>{@link SchemaFactory#newSchema(Source)} via {@link XmlFactories#newSchemaFactory()}; use this when the hardening contract guarantees the compile
-     * succeeds but never resolves the external resource (e.g. {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skipping the external subset, with the body's
+     * succeeds but never resolves the external resource (for example, {@code XERCES_LOAD_EXTERNAL_DTD=false} silently skipping the external subset, with the body's
      * undeclared entity reference dropped per XML 1.0 §4.1).</p>
      */
     static void assertSchemaDoesNotLeak(final Source xsd) {
@@ -464,7 +464,7 @@ final class AttackTestSupport {
      * Asserts a hardened StAX parse completes without throwing and without leaked content.
      *
      * <p>{@link XMLStreamReader} and {@link XMLEventReader} from {@link XmlFactories#newXMLInputFactory()}; both flavors are exercised. Use this when the
-     * hardening guarantee is "the parse succeeds but never resolves the external resource", e.g. when the JDK's {@code ignore-external-dtd} property silently
+     * hardening guarantee is "the parse succeeds but never resolves the external resource", for example, when the JDK's {@code ignore-external-dtd} property silently
      * skips the external subset.</p>
      */
     static void assertStaxDoesNotLeak(final String payload) {

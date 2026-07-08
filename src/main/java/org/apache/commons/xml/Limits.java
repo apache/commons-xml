@@ -97,7 +97,7 @@ final class Limits {
      */
     private static final int DEFAULT_MAX_ELEMENT_DEPTH = 100;
     /**
-     * Maximum length, in characters, of an XML name (element name, attribute name, namespace prefix, etc); JDK 25 secure value.
+     * Maximum length, in characters, of an XML name (element name, attribute name, namespace prefix, and so on); JDK 25 secure value.
      *
      * <p>Override with system property {@value #SP_MAX_NAME_LIMIT}.</p>
      *

@@ -67,7 +67,7 @@ import org.xml.sax.XMLReader;
  * <h2>Thread safety</h2>
  *
  * <p>The returned factories inherit the thread-safety properties of the underlying JAXP implementation, which in practice means they are <strong>not
- * guaranteed to be thread-safe</strong>. Create a new factory per thread or synchronize externally.</p>
+ * guaranteed to be thread-safe</strong>. Create a new factory per thread or synchronise externally.</p>
  *
  * <p>This class itself is thread-safe: all methods are static and stateless.</p>
  */

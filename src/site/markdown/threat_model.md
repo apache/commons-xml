@@ -47,7 +47,7 @@ makes is documented in the Javadoc:
 
 https://commons.apache.org/sandbox/commons-xml/apidocs/org/apache/commons/xml/factory/XmlFactories.html
 
-The hardening applies to the factory and to the parsers, readers, transformers, validators, and schemas it produces.
+The hardening applies to the factory and to the parsers, readers, transformers, validators and schemas it produces.
 
 ### Adversary model and trust boundary
 
@@ -96,9 +96,9 @@ reconfiguration, treated like loosening any other reserved setting (see [What is
 
 **Reserved settings (must not be loosened)**
 
-The library MAY rely on the following features, attributes, and properties staying as configured. They are reserved because
+The library MAY rely on the following features, attributes and properties staying as configured. They are reserved because
 they govern external resource access, DTD, entity or schema handling, the installation of a resolver, or processing
-limits; loosening any of them, on the returned factory or on a parser, reader, transformer, validator, or schema it
+limits; loosening any of them, on the returned factory or on a parser, reader, transformer, validator or schema it
 produces, breaks the hardening for that instance.
 
 - `http://apache.org/xml/features/disallow-doctype-decl`

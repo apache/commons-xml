@@ -30,7 +30,7 @@ stock JDK and external JAXP implementations.
 
 Any Java library that parses XML has to harden JAXP before handing a factory to user code, and every library ends up
 copy-pasting the same hardening snippet. The snippet is fragile: the attributes and features needed to harden a factory
-are not standardized, each JAXP implementation exposes a slightly different set, and setting an unknown one throws an
+are not standardised, each JAXP implementation exposes a slightly different set, and setting an unknown one throws an
 exception that callers routinely swallow. Writing this block correctly for every implementation is real work, and
 duplicating it across projects means every project owns the maintenance burden on its own.
 
@@ -142,5 +142,5 @@ pass the result as a `DOMSource` or `SAXSource`.
 
 There is no caching or pooling inside `XmlFactories`; callers on a hot path are responsible for their own caching. The
 returned factories inherit the thread-safety properties of the underlying JAXP implementation, which in practice means
-they are not thread-safe. Create a new factory per thread or synchronize externally.
+they are not thread-safe. Create a new factory per thread or synchronise externally.
 

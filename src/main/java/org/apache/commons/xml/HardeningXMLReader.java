@@ -30,16 +30,44 @@ import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 
 /**
- * {@link XMLReader} that forwards every method to a wrapped delegate.
+ * {@link XMLReader} wrapper that keeps a {@link Resolvers.FallbackDenyResolver} floor as the reader's entity resolver, non-overridable by the caller.
+ *
+ * <p>The floor is installed once and stays the reader's entity resolver for the wrapper's lifetime; {@link #setEntityResolver(EntityResolver)} routes the
+ * caller's resolver through {@link Resolvers.FallbackDenyResolver#setDelegate} instead of replacing it. This includes the {@code DefaultHandler} that
+ * {@link javax.xml.parsers.SAXParser#parse(org.xml.sax.InputSource, org.xml.sax.helpers.DefaultHandler) SAXParser.parse(source, handler)} installs as the
+ * reader's entity resolver, which would otherwise silently replace the floor. {@link #getEntityResolver()} reports the caller's resolver unwrapped.</p>
+ *
+ * <p>A path that needs a non-deny floor (e.g. one that also permits the external DTD subset) passes a {@link Resolvers.FallbackDenyResolver} subclass to the
+ * two-argument constructor; a single stable floor instance also lets that subclass double as a {@link org.xml.sax.ext.LexicalHandler}. Every other method
+ * forwards to the wrapped delegate; subclasses (e.g. {@code HardeningExpatXMLReader}) add per-implementation fixups on top of the floor.</p>
  */
-class DelegatingXMLReader implements XMLReader {
+class HardeningXMLReader implements XMLReader {
 
     private final XMLReader delegate;
 
-    DelegatingXMLReader(final XMLReader delegate) {
-        this.delegate = delegate;
+    private final Resolvers.FallbackDenyResolver floor;
+
+    HardeningXMLReader(final XMLReader delegate) {
+        this(delegate, new Resolvers.FallbackDenyResolver(null));
     }
 
+    HardeningXMLReader(final XMLReader delegate, final Resolvers.FallbackDenyResolver floor) {
+        this.delegate = delegate;
+        this.floor = floor;
+        delegate.setEntityResolver(floor);
+    }
+
+    @Override
+    public void setEntityResolver(final EntityResolver resolver) {
+        floor.setDelegate(resolver);
+    }
+
+    @Override
+    public EntityResolver getEntityResolver() {
+        return floor.getDelegate();
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
     @Override
     public ContentHandler getContentHandler() {
         return delegate.getContentHandler();
@@ -48,11 +76,6 @@ class DelegatingXMLReader implements XMLReader {
     @Override
     public DTDHandler getDTDHandler() {
         return delegate.getDTDHandler();
-    }
-
-    @Override
-    public EntityResolver getEntityResolver() {
-        return delegate.getEntityResolver();
     }
 
     @Override
@@ -91,11 +114,6 @@ class DelegatingXMLReader implements XMLReader {
     }
 
     @Override
-    public void setEntityResolver(final EntityResolver resolver) {
-        delegate.setEntityResolver(resolver);
-    }
-
-    @Override
     public void setErrorHandler(final ErrorHandler handler) {
         delegate.setErrorHandler(handler);
     }
@@ -109,4 +127,5 @@ class DelegatingXMLReader implements XMLReader {
     public void setProperty(final String name, final Object value) throws SAXNotRecognizedException, SAXNotSupportedException {
         delegate.setProperty(name, value);
     }
+    // </editor-fold>
 }

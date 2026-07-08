@@ -40,6 +40,7 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import org.w3c.dom.Document;
@@ -47,9 +48,12 @@ import org.w3c.dom.Element;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
+import org.xml.sax.helpers.XMLFilterImpl;
 
 /**
  * Shared fixtures for attack tests.
@@ -98,7 +102,7 @@ final class AttackTestSupport {
      * error or fatalError so the helpers can observe the block via the same mechanism the spec uses to surface it. Warnings stay silent: they are not security
      * signals.</p>
      */
-    private static final class StrictReporter implements ErrorListener, ErrorHandler {
+    static final class StrictReporter implements ErrorListener, ErrorHandler {
 
         @Override
         public void error(final SAXParseException exception) throws SAXException {
@@ -170,7 +174,7 @@ final class AttackTestSupport {
      * presence is the leak signal.</p>
      */
     static final String LEAKED_MARKER = "All your base are belong to us";
-    private static final StrictReporter STRICT_REPORTER = new StrictReporter();
+    static final StrictReporter STRICT_REPORTER = new StrictReporter();
 
     /**
      * Asserts a hardened DOM parse of the payload throws.
@@ -617,6 +621,18 @@ final class AttackTestSupport {
     }
 
     /**
+     * Runs the action and, if it throws, aborts (skips rather than fails) the calling test. Used to guard platform-optional configuration such as
+     * {@code setXIncludeAware}, which the Android JAXP implementations do not support.
+     */
+    static void assumeDoesNotThrow(final Executable action) {
+        try {
+            action.execute();
+        } catch (final Throwable t) {
+            Assumptions.assumeTrue(false, "platform does not support this configuration: " + t);
+        }
+    }
+
+    /**
      * Builds the failure message used by every {@code assert*Blocks(...)} helper.
      *
      * @param description short label naming the JAXP surface under test.
@@ -732,7 +748,31 @@ final class AttackTestSupport {
         factory.setNamespaceAware(true);
         final XMLReader reader = strictXMLReader(factory);
         suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-        return new SAXSource(IS_ANDROID ? new SAXParserHardener.ExpatReaderWrapper(reader) : reader, new InputSource(new StringReader(xml)));
+        // On Android the reader is Expat, which accepts namespace-prefixes at setFeature time but fails mid-parse; a permissive TrAX identity transform probes
+        // that feature, so wrap it to reject the feature eagerly (matching the production HardeningExpatXMLReader) while keeping the control permissive (no floor).
+        return new SAXSource(IS_ANDROID ? new PermissiveExpatReader(reader) : reader, new InputSource(new StringReader(xml)));
+    }
+
+    /**
+     * Test-only permissive counterpart of {@code SAXParserHardener.HardeningExpatXMLReader}: a pass-through Expat wrapper that rejects the
+     * {@code namespace-prefixes} feature eagerly (so a probing TrAX identity transformer falls back instead of failing the whole parse) but installs no deny-all
+     * resolver floor, so the unconfigured/positive controls stay permissive.
+     */
+    private static final class PermissiveExpatReader extends XMLFilterImpl {
+
+        private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
+
+        PermissiveExpatReader(final XMLReader parent) {
+            super(parent);
+        }
+
+        @Override
+        public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+            if (value && NAMESPACE_PREFIXES_FEATURE.equals(name)) {
+                throw new SAXNotSupportedException("ExpatReader does not support enabling the '" + NAMESPACE_PREFIXES_FEATURE + "' feature");
+            }
+            super.setFeature(name, value);
+        }
     }
 
     private static boolean probeAndroid() {
@@ -790,7 +830,7 @@ final class AttackTestSupport {
     /**
      * Builds a {@link DocumentBuilder} from {@code factory} with {@link #STRICT_REPORTER} installed as its error handler.
      */
-    private static DocumentBuilder strictDocumentBuilder(final DocumentBuilderFactory factory) throws ParserConfigurationException {
+    static DocumentBuilder strictDocumentBuilder(final DocumentBuilderFactory factory) throws ParserConfigurationException {
         final DocumentBuilder builder = factory.newDocumentBuilder();
         builder.setErrorHandler(STRICT_REPORTER);
         return builder;

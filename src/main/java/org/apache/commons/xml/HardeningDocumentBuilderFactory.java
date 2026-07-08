@@ -22,17 +22,29 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.validation.Schema;
 
+import org.xml.sax.EntityResolver;
+
 /**
- * {@link DocumentBuilderFactory} subclass that forwards every method to a wrapped delegate.
+ * {@link DocumentBuilderFactory} wrapper that keeps a deny-all {@link EntityResolver} floor on every {@link DocumentBuilder} produced.
+ *
+ * <p>Wraps each produced builder in a {@link HardeningDocumentBuilder}; required when the underlying factory carries no resolver of its own and does not honor
+ * JAXP 1.5 {@code ACCESS_EXTERNAL_*} (e.g. the external Xerces distribution). A caller-set resolver is routed through the floor rather than replacing it. Kept
+ * as a standalone wrapper so any hardener can reuse the floor.</p>
  */
-class DelegatingDocumentBuilderFactory extends DocumentBuilderFactory {
+final class HardeningDocumentBuilderFactory extends DocumentBuilderFactory {
 
     private final DocumentBuilderFactory delegate;
 
-    DelegatingDocumentBuilderFactory(final DocumentBuilderFactory delegate) {
+    HardeningDocumentBuilderFactory(final DocumentBuilderFactory delegate) {
         this.delegate = delegate;
     }
 
+    @Override
+    public DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
+        return new HardeningDocumentBuilder(delegate.newDocumentBuilder());
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
     @Override
     public Object getAttribute(final String name) {
         return delegate.getAttribute(name);
@@ -84,11 +96,6 @@ class DelegatingDocumentBuilderFactory extends DocumentBuilderFactory {
     }
 
     @Override
-    public DocumentBuilder newDocumentBuilder() throws ParserConfigurationException {
-        return delegate.newDocumentBuilder();
-    }
-
-    @Override
     public void setAttribute(final String name, final Object value) {
         delegate.setAttribute(name, value);
     }
@@ -137,4 +144,5 @@ class DelegatingDocumentBuilderFactory extends DocumentBuilderFactory {
     public void setXIncludeAware(final boolean state) {
         delegate.setXIncludeAware(state);
     }
+    // </editor-fold>
 }

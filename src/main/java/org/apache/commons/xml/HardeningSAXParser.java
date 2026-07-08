@@ -18,9 +18,12 @@
 package org.apache.commons.xml;
 
 import javax.xml.parsers.SAXParser;
+import javax.xml.validation.Schema;
 
 import org.xml.sax.Parser;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderAdapter;
 
@@ -35,19 +38,21 @@ import org.xml.sax.helpers.XMLReaderAdapter;
  * every parse must run through the same instance. The {@code parse(...)} overloads inherited from {@link SAXParser} dispatch virtually to {@link #getXMLReader()}
  * and {@link #getParser()}, so they too run through the hardened views without further overrides.</p>
  */
-final class HardeningSAXParser extends DelegatingSAXParser {
+final class HardeningSAXParser extends SAXParser {
+
+    private final SAXParser delegate;
 
     private XMLReader hardenedReader;
     private Parser hardenedParser;
 
     HardeningSAXParser(final SAXParser delegate) {
-        super(delegate);
+        this.delegate = delegate;
     }
 
     @Override
     public XMLReader getXMLReader() throws SAXException {
         if (hardenedReader == null) {
-            hardenedReader = SAXParserHardener.hardenReader(super.getXMLReader());
+            hardenedReader = SAXParserHardener.hardenReader(delegate.getXMLReader());
         }
         return hardenedReader;
     }
@@ -62,4 +67,41 @@ final class HardeningSAXParser extends DelegatingSAXParser {
         }
         return hardenedParser;
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public Object getProperty(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getProperty(name);
+    }
+
+    @Override
+    public Schema getSchema() {
+        return delegate.getSchema();
+    }
+
+    @Override
+    public boolean isNamespaceAware() {
+        return delegate.isNamespaceAware();
+    }
+
+    @Override
+    public boolean isValidating() {
+        return delegate.isValidating();
+    }
+
+    @Override
+    public boolean isXIncludeAware() {
+        return delegate.isXIncludeAware();
+    }
+
+    @Override
+    public void reset() {
+        delegate.reset();
+    }
+
+    @Override
+    public void setProperty(final String name, final Object value) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setProperty(name, value);
+    }
+    // </editor-fold>
 }

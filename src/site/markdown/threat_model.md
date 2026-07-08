@@ -101,9 +101,6 @@ they govern external resource access, DTD, entity or schema handling, the instal
 limits; loosening any of them, on the returned factory or on a parser, reader, transformer, validator or schema it
 produces, breaks the hardening for that instance.
 
-- `com.ctc.wstx.dtdResolver`
-- `com.ctc.wstx.entityResolver`
-- `com.ctc.wstx.undeclaredEntityResolver`
 - `http://apache.org/xml/features/disallow-doctype-decl`
 - `http://apache.org/xml/features/nonvalidating/load-external-dtd`
 - `http://apache.org/xml/properties/internal/entity-resolver`
@@ -120,15 +117,37 @@ produces, breaks the hardening for that instance.
 - `jdk.xml.overrideDefaultParser`
 - the JDK processing-limit properties listed above
 
-This list is not exhaustive: any other feature, attribute, property or system property that grants access to an external
-resource, relaxes DTD or entity processing, installs a resolver, or raises a processing limit is reserved on the same
-terms. Installing a resolver through the typed `set*Resolver` methods, or through the `DefaultHandler` passed to
-`SAXParser.parse`, has the same effect (see [What is out of scope](#what-is-out-of-scope)).
+This list is not exhaustive:
+any other feature, attribute, property, or system property that
+grants access to an external resource,
+relaxes DTD or entity processing,
+installs a resolver the hardening layer does not wrap
+(like the Xerces-specific `http://apache.org/xml/properties/internal/entity-resolver`, listed above),
+or raises a processing limit
+is reserved on the same terms.
+
+Installing a resolver through the typed `set*Resolver` methods, the `DefaultHandler` passed to `SAXParser.parse`, or the resolver properties listed under **Settings you may modify** does not loosen the hardening:
+those paths are wrapped by a non-removable floor.
 
 **Settings you may modify**
 
 The following are security-relevant but safe to change on a returned factory: the protection they appear to govern is
 enforced by the reserved settings above, which a caller cannot lift.
+
+- **Resolvers.** You may install your own resolver: the hardening floor wraps it instead of being replaced, so it stays
+  in force. This covers the typed setters and the resolver properties:
+    - `setEntityResolver(...)` (DOM and SAX), including the `DefaultHandler` passed to `SAXParser.parse(..., DefaultHandler)`,
+    - `setResourceResolver(...)` (schema compilation and validation),
+    - `setURIResolver(...)` (XSLT),
+    - `setXMLResolver(...)` and the equivalent StAX resolver properties:
+        - `com.ctc.wstx.dtdResolver`,
+        - `com.ctc.wstx.entityResolver`,
+        - `com.ctc.wstx.undeclaredEntityResolver`,
+        - `javax.xml.stream.resolver`.
+
+  Your resolver is consulted first, but the floor denies or ignores whatever it leaves unresolved.
+  It therefore *must* resolve every resource you need available: a `null` return blocks the lookup,
+  it does not fall through to a fetch.
 
 - **Validation.** You may turn on DTD or XSD validation, using these methods and features/properties:
   - `setSchema(Schema)`,
@@ -156,9 +175,10 @@ and reports against a factory reconfigured in any of the ways below are out of s
 
 - **Modifying a reserved setting.** Loosening any feature, attribute or property reserved under
   [Assumptions about the environment](#assumptions-about-the-environment).
-- **Installing your own resolver.** Setting an entity, resource or URI resolver, whether it returns `null` or returns
-  content, replaces the resolution policy the hardening relies on. This includes the `DefaultHandler` passed to
-  `SAXParser.parse(..., DefaultHandler)`, which the parser installs as its entity resolver.
+- **A resolver that resolves untrusted resources.** Installing a resolver does not lift the floor (see
+  **Settings you may modify** above), but your resolver is consulted ahead of it, so any resource it resolves (returns
+  content for) is fetched, including one named by an untrusted identifier. Which resources it resolves is your policy to
+  enforce.
 - **Caller-supplied top-level URIs.** A URI passed directly to a parse call (`DocumentBuilder.parse(String)`,
   `StreamSource(systemId)`, a `SAXSource` built from a system id) is fetched as-is by the JAXP implementation without
   consulting the hardening layer. Restrict it yourself if the URI is untrusted.

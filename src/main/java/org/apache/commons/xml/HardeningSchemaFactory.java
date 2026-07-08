@@ -23,7 +23,11 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 import javax.xml.validation.Validator;
 
+import org.w3c.dom.ls.LSResourceResolver;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
 
 /**
  * Capability-driven hardening wrapper for any {@link SchemaFactory} on the classpath, the same recipe for every implementation. It is the entry point reached
@@ -32,36 +36,52 @@ import org.xml.sax.SAXException;
  *
  * <p>Three layers cooperate:</p>
  * <ol>
- *   <li>{@link HardeningSchemaFactory} installs a deny-all {@link Resolvers.DenyAll#LS_RESOURCE} on the factory (blocking
+ *   <li>{@link HardeningSchemaFactory} installs a deny-all {@link Resolvers.FallbackDenyLSResourceResolver} floor on the factory (blocking
  *       {@code xs:import}/{@code xs:include}/{@code xs:redefine} at compile time) and rewrites the Source on every {@code newSchema(Source[])} entry point
  *       through {@link XmlFactories#harden(Source)}.</li>
- *   <li>{@link HardeningSchema} wraps every Validator/ValidatorHandler the inner Schema produces and re-installs the deny-all resolver on each (blocking
+ *   <li>{@link HardeningSchema} wraps every Validator/ValidatorHandler the inner Schema produces and re-installs the floor on each (blocking
  *       {@code xsi:schemaLocation} at validation time), since neither the JDK nor Xerces reliably propagates it through {@code Schema}.</li>
  *   <li>{@link HardeningValidator} rewrites the Source on every {@link Validator#validate(Source)} call.</li>
  * </ol>
  *
  * <p>The hardened reader supplied by {@link XmlFactories#harden(Source)} already carries {@code FEATURE_SECURE_PROCESSING} and the processing limits, so a
  * DOCTYPE, external entity or Billion Laughs payload in the schema or instance document is bounded there rather than on this factory. The JAXP 1.5
- * {@code ACCESS_EXTERNAL_*} properties are deliberately not set: the deny-all resolver already blocks the same fetches on every implementation, and the JDK 8
- * {@code SchemaFactory} has a bug whereby those properties keep blocking even when a caller's own resolver would grant the access, so leaving them unset lets a
- * caller re-enable specific lookups by swapping the resolver.</p>
+ * {@code ACCESS_EXTERNAL_*} properties are deliberately not set: the resolver floor already blocks the same fetches on every implementation, and the JDK 8
+ * {@code SchemaFactory} has a bug whereby those properties keep blocking even when a caller's own resolver would grant the access. The floor is a non-removable
+ * lower bound: a caller-set {@link LSResourceResolver} is routed through it (opting a specific lookup in by returning a non-{@code null} result) rather than
+ * replacing it, so hardening cannot be dropped by swapping the resolver.</p>
  */
-final class HardeningSchemaFactory extends DelegatingSchemaFactory {
+final class HardeningSchemaFactory extends SchemaFactory {
+
+    private final SchemaFactory delegate;
+
+    private final Resolvers.FallbackDenyLSResourceResolver floor = new Resolvers.FallbackDenyLSResourceResolver(null);
 
     HardeningSchemaFactory(final SchemaFactory delegate) {
-        super(delegate);
+        this.delegate = delegate;
         // Compile-time block for xs:import/include/redefine; the wrappers carry the rest (per-product resolver, source rewriting, limits via the reader).
-        delegate.setResourceResolver(Resolvers.DenyAll.LS_RESOURCE);
+        delegate.setResourceResolver(floor);
+    }
+
+    @Override
+    public void setResourceResolver(final LSResourceResolver resourceResolver) {
+        // Route a caller resolver through the floor instead of replacing it, so the deny-all lower bound cannot be removed.
+        floor.setDelegate(resourceResolver);
+    }
+
+    @Override
+    public LSResourceResolver getResourceResolver() {
+        return floor.getDelegate();
     }
 
     @Override
     public Schema newSchema() throws SAXException {
-        return new HardeningSchema(super.newSchema());
+        return new HardeningSchema(delegate.newSchema());
     }
 
     @Override
     public Schema newSchema(final Source[] schemas) throws SAXException {
-        return new HardeningSchema(super.newSchema(harden(schemas)));
+        return new HardeningSchema(delegate.newSchema(harden(schemas)));
     }
 
     private static Source[] harden(final Source[] schemas) throws SAXException {
@@ -75,4 +95,41 @@ final class HardeningSchemaFactory extends DelegatingSchemaFactory {
         }
         return hardened;
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public ErrorHandler getErrorHandler() {
+        return delegate.getErrorHandler();
+    }
+
+    @Override
+    public boolean getFeature(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getFeature(name);
+    }
+
+    @Override
+    public Object getProperty(final String name) throws SAXNotRecognizedException, SAXNotSupportedException {
+        return delegate.getProperty(name);
+    }
+
+    @Override
+    public boolean isSchemaLanguageSupported(final String schemaLanguage) {
+        return delegate.isSchemaLanguageSupported(schemaLanguage);
+    }
+
+    @Override
+    public void setErrorHandler(final ErrorHandler errorHandler) {
+        delegate.setErrorHandler(errorHandler);
+    }
+
+    @Override
+    public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setFeature(name, value);
+    }
+
+    @Override
+    public void setProperty(final String name, final Object object) throws SAXNotRecognizedException, SAXNotSupportedException {
+        delegate.setProperty(name, object);
+    }
+    // </editor-fold>
 }

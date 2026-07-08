@@ -17,14 +17,18 @@
 
 package org.apache.commons.xml;
 
+import javax.xml.transform.ErrorListener;
 import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.sax.SAXTransformerFactory;
+import javax.xml.transform.sax.TemplatesHandler;
 import javax.xml.transform.sax.TransformerHandler;
 
+import org.xml.sax.XMLFilter;
 import org.xml.sax.XMLReader;
 
 /**
@@ -52,39 +56,112 @@ import org.xml.sax.XMLReader;
  *       runtime source rewrite.</li>
  * </ul>
  */
-final class HardeningTransformerFactory extends DelegatingTransformerFactory {
+final class HardeningTransformerFactory extends SAXTransformerFactory {
+
+    private final SAXTransformerFactory delegate;
+
+    private final Resolvers.FallbackDenyURIResolver floor = new Resolvers.FallbackDenyURIResolver(null);
 
     HardeningTransformerFactory(final SAXTransformerFactory delegate) {
-        super(delegate);
+        this.delegate = delegate;
+        // Compile-time block for xsl:import/xsl:include and document(); a caller-set resolver is routed through the floor rather than replacing it.
+        delegate.setURIResolver(floor);
+    }
+
+    @Override
+    public void setURIResolver(final URIResolver resolver) {
+        floor.setDelegate(resolver);
+    }
+
+    @Override
+    public URIResolver getURIResolver() {
+        return floor.getDelegate();
     }
 
     @Override
     public Source getAssociatedStylesheet(final Source source, final String media, final String title, final String charset)
             throws TransformerConfigurationException {
-        return super.getAssociatedStylesheet(XmlFactories.harden(source), media, title, charset);
+        return delegate.getAssociatedStylesheet(XmlFactories.harden(source), media, title, charset);
     }
 
     @Override
     public Templates newTemplates(final Source source) throws TransformerConfigurationException {
-        final Templates templates = super.newTemplates(XmlFactories.harden(source));
+        final Templates templates = delegate.newTemplates(XmlFactories.harden(source));
         return templates == null ? null : new HardeningTemplates(templates, getURIResolver());
     }
 
     @Override
     public Transformer newTransformer() throws TransformerConfigurationException {
         // Identity transformer: still parses runtime sources, so wrap it to harden Transformer.transform(Source, Result).
-        final Transformer transformer = super.newTransformer();
-        return transformer == null ? null : new HardeningTransformer(transformer);
+        final Transformer transformer = delegate.newTransformer();
+        return transformer == null ? null : new HardeningTransformer(transformer, getURIResolver());
     }
 
     @Override
     public Transformer newTransformer(final Source source) throws TransformerConfigurationException {
-        final Transformer transformer = super.newTransformer(XmlFactories.harden(source));
-        return transformer == null ? null : new HardeningTransformer(transformer);
+        final Transformer transformer = delegate.newTransformer(XmlFactories.harden(source));
+        return transformer == null ? null : new HardeningTransformer(transformer, getURIResolver());
     }
 
     @Override
     public TransformerHandler newTransformerHandler(final Source source) throws TransformerConfigurationException {
-        return super.newTransformerHandler(XmlFactories.harden(source));
+        return delegate.newTransformerHandler(XmlFactories.harden(source));
     }
+
+    // <editor-fold defaultstate="collapsed" desc="Trivial delegation">
+    @Override
+    public Object getAttribute(final String name) {
+        return delegate.getAttribute(name);
+    }
+
+    @Override
+    public ErrorListener getErrorListener() {
+        return delegate.getErrorListener();
+    }
+
+    @Override
+    public boolean getFeature(final String name) {
+        return delegate.getFeature(name);
+    }
+
+    @Override
+    public TemplatesHandler newTemplatesHandler() throws TransformerConfigurationException {
+        return delegate.newTemplatesHandler();
+    }
+
+    @Override
+    public TransformerHandler newTransformerHandler() throws TransformerConfigurationException {
+        return delegate.newTransformerHandler();
+    }
+
+    @Override
+    public TransformerHandler newTransformerHandler(final Templates templates) throws TransformerConfigurationException {
+        return delegate.newTransformerHandler(templates);
+    }
+
+    @Override
+    public XMLFilter newXMLFilter(final Source source) throws TransformerConfigurationException {
+        return delegate.newXMLFilter(source);
+    }
+
+    @Override
+    public XMLFilter newXMLFilter(final Templates templates) throws TransformerConfigurationException {
+        return delegate.newXMLFilter(templates);
+    }
+
+    @Override
+    public void setAttribute(final String name, final Object value) {
+        delegate.setAttribute(name, value);
+    }
+
+    @Override
+    public void setErrorListener(final ErrorListener listener) {
+        delegate.setErrorListener(listener);
+    }
+
+    @Override
+    public void setFeature(final String name, final boolean value) throws TransformerConfigurationException {
+        delegate.setFeature(name, value);
+    }
+    // </editor-fold>
 }

@@ -33,7 +33,7 @@ import org.xml.sax.ext.EntityResolver2;
 /**
  * Stateless resolver singletons that fix the outcome of every external lookup.
  *
- * <p>Two flavours are exposed, each as a typed singleton field per resolver interface:</p>
+ * <p>Two flavors are exposed, each as a typed singleton field per resolver interface:</p>
  * <ul>
  *     <li>{@link DenyAll} refuses every lookup with an exception. Use this on schema/XSLT compile paths and on parser entity hooks where any external fetch is
  *         a hardening violation.</li>
@@ -43,7 +43,7 @@ import org.xml.sax.ext.EntityResolver2;
  *
  * <p>{@link XMLResolver} and {@link EntityResolver2} both declare a 4-arg {@code resolveEntity(String, String, String, String)} with identical erasure but
  * different parameter semantics, return types ({@link Object} vs {@link InputSource}) and throws clauses ({@link XMLStreamException} vs {@link SAXException}),
- * so they cannot coexist on the same class. Each flavour therefore exposes its {@code XMLResolver} and {@code EntityResolver2} singletons separately.</p>
+ * so they cannot coexist on the same class. Each flavor therefore exposes its {@code XMLResolver} and {@code EntityResolver2} singletons separately.</p>
  */
 final class Resolvers {
 
@@ -113,7 +113,7 @@ final class Resolvers {
     /**
      * Returns an empty input for every external resource lookup so the parse can continue without replacement content.
      *
-     * <p>Only an {@link XMLResolver} flavour is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use the deny-all hooks.</p>
+     * <p>Only an {@link XMLResolver} flavor is exposed: schema and XSLT compile paths must always deny imports, and SAX/DOM use the deny-all hooks.</p>
      */
     static final class IgnoreAll {
 

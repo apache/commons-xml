@@ -168,6 +168,10 @@ final class AttackTestSupport {
      */
     private static final String JDK_ENTITY_EXPANSION_LIMIT = "http://www.oracle.com/xml/jaxp/properties/entityExpansionLimit";
     /**
+     * Woodstox's entity-count limit property; it ignores the JDK property above and enforces its own default of {@code 100000}.
+     */
+    private static final String WSTX_MAX_ENTITY_COUNT = "com.ctc.wstx.maxEntityCount";
+    /**
      * Text planted in every fixture under {@code src/test/resources/leaked/}.
      *
      * <p>Tests that capture a parser's output assert this string is absent: it can only appear if the hardened parser fetched the external resource, so its
@@ -349,6 +353,8 @@ final class AttackTestSupport {
             suppressException(() -> factory.setProperty(XMLConstants.FEATURE_SECURE_PROCESSING, false));
             // URL form of the JDK property; JDK 8's XMLSecurityManager.getIndex only matches this form, JDK 11+ accepts both.
             suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            // Woodstox ignores the JDK property and enforces its own default (100000) entity-count limit; lift it so the positive control parses.
+            suppressException(() -> factory.setProperty(WSTX_MAX_ENTITY_COUNT, Long.MAX_VALUE));
             consumeStreamReader(factory, payload);
         }, "StAX");
     }

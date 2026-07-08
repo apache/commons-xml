@@ -41,9 +41,8 @@ final class JaxpSetters {
     private interface ThrowingAction {
         void run() throws Exception;
     }
-    private static final String KIND_ATTRIBUTE = "attribute";
+
     private static final String KIND_FEATURE = "feature";
-    private static final String KIND_PROPERTY = "property";
 
     private static void apply(final Object factory, final String kind, final String name, final ThrowingAction action) {
         try {

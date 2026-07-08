@@ -45,7 +45,7 @@ import org.junit.jupiter.api.Test;
  * <p>Which fixture each test uses:</p>
  *
  * <ul>
- *   <li>{@code hardened*} tests pull from {@code hardened*Payload} helpers: large fixture on Android (libexpat is the only defense), medium fixture on JDK
+ *   <li>{@code hardened*} tests pull from {@code hardened*Payload} helpers: large fixture on Android (libexpat is the only defence), medium fixture on JDK
  *       (entity-expansion count limit is sufficient).</li>
  *   <li>{@code unconfigured*} positive controls pull from {@code medium*Payload} helpers regardless of platform: libexpat's billion-laughs check cannot be
  *       disabled from Java, so a permissive parse of the large fixture would still trip on Android.</li>

@@ -92,6 +92,28 @@ import org.xml.sax.helpers.XMLFilterImpl;
 final class AttackTestSupport {
 
     /**
+     * Test-only permissive counterpart of {@code SAXParserHardener.HardeningExpatXMLReader}: a pass-through Expat wrapper that rejects the
+     * {@code namespace-prefixes} feature eagerly (so a probing TrAX identity transformer falls back instead of failing the whole parse) but installs no deny-all
+     * resolver floor, so the unconfigured/positive controls stay permissive.
+     */
+    private static final class PermissiveExpatReader extends XMLFilterImpl {
+
+        private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
+
+        PermissiveExpatReader(final XMLReader parent) {
+            super(parent);
+        }
+
+        @Override
+        public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
+            if (value && NAMESPACE_PREFIXES_FEATURE.equals(name)) {
+                throw new SAXNotSupportedException("ExpatReader does not support enabling the '" + NAMESPACE_PREFIXES_FEATURE + "' feature");
+            }
+            super.setFeature(name, value);
+        }
+    }
+
+    /**
      * Strict reporter installed on every hardened factory, parser, validator and transformer in the helpers below.
      *
      * <p>The hardening layer signals every blocked external fetch and every SAX-fatal it could not silently skip via the standard JAXP error channels:
@@ -164,13 +186,12 @@ final class AttackTestSupport {
     /** {@code true} when running on Android (Dalvik / ART), {@code false} on any standard JVM. Probed once via {@code Class.forName} on {@code android.os.Build}. */
     static final boolean IS_ANDROID = probeAndroid();
     /**
-     * URL form of the JDK's entity-expansion limit property.
+     * URL form of the three JDK entity limits, every one of which a Billion Laughs payload could trip.
      */
-    private static final String JDK_ENTITY_EXPANSION_LIMIT = "http://www.oracle.com/xml/jaxp/properties/entityExpansionLimit";
-    /**
-     * Woodstox's entity-count limit property; it ignores the JDK property above and enforces its own default of {@code 100000}.
-     */
-    private static final String WSTX_MAX_ENTITY_COUNT = "com.ctc.wstx.maxEntityCount";
+    private static final String[] JDK_ENTITY_LIMITS = {
+            "http://www.oracle.com/xml/jaxp/properties/entityExpansionLimit",
+            "http://www.oracle.com/xml/jaxp/properties/totalEntitySizeLimit",
+            "http://www.oracle.com/xml/jaxp/properties/entityReplacementLimit"};
     /**
      * Text planted in every fixture under {@code src/test/resources/leaked/}.
      *
@@ -179,6 +200,10 @@ final class AttackTestSupport {
      */
     static final String LEAKED_MARKER = "All your base are belong to us";
     static final StrictReporter STRICT_REPORTER = new StrictReporter();
+    /**
+     * Woodstox's entity-count limit property; it ignores the JDK properties above and enforces its own default of {@code 100000}.
+     */
+    private static final String WSTX_MAX_ENTITY_COUNT = "com.ctc.wstx.maxEntityCount";
 
     /**
      * Asserts a hardened DOM parse of the payload throws.
@@ -302,7 +327,7 @@ final class AttackTestSupport {
             if (!IS_ANDROID) {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
-            suppressException(() -> factory.setAttribute(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            liftJdkEntityLimits(factory);
             strictDocumentBuilder(factory).parse(inputSource(payload));
         }, "DOM");
     }
@@ -320,7 +345,7 @@ final class AttackTestSupport {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
             final XMLReader reader = strictXMLReader(factory);
-            suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            liftJdkEntityLimits(reader);
             consumeXmlReader(reader, payload);
         }, "SAX");
     }
@@ -337,7 +362,7 @@ final class AttackTestSupport {
             if (!IS_ANDROID) {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
-            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            liftJdkEntityLimits(factory);
             strictSchema(factory, xsd);
         }, "Schema compile");
     }
@@ -351,9 +376,8 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final XMLInputFactory factory = XMLInputFactory.newInstance();
             suppressException(() -> factory.setProperty(XMLConstants.FEATURE_SECURE_PROCESSING, false));
-            // URL form of the JDK property; JDK 8's XMLSecurityManager.getIndex only matches this form, JDK 11+ accepts both.
-            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
-            // Woodstox ignores the JDK property and enforces its own default (100000) entity-count limit; lift it so the positive control parses.
+            liftJdkEntityLimits(factory);
+            // Woodstox ignores the JDK properties and enforces its own default (100000) entity-count limit; lift it so the positive control parses.
             suppressException(() -> factory.setProperty(WSTX_MAX_ENTITY_COUNT, Long.MAX_VALUE));
             consumeStreamReader(factory, payload);
         }, "StAX");
@@ -397,7 +421,7 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            suppressException(() -> factory.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+            liftJdkEntityLimits(factory);
             strictValidator(strictSchema(factory, streamSource(BENIGN_SCHEMA))).validate(streamSource(xml));
         }, "Validator");
     }
@@ -746,6 +770,34 @@ final class AttackTestSupport {
         return new InputSource(new StringReader(xml));
     }
 
+    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on a {@link DocumentBuilderFactory}; {@code "0"} means unlimited. */
+    private static void liftJdkEntityLimits(final DocumentBuilderFactory factory) {
+        for (final String limit : JDK_ENTITY_LIMITS) {
+            suppressException(() -> factory.setAttribute(limit, "0"));
+        }
+    }
+
+    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on a {@link SchemaFactory}; {@code "0"} means unlimited. */
+    private static void liftJdkEntityLimits(final SchemaFactory factory) {
+        for (final String limit : JDK_ENTITY_LIMITS) {
+            suppressException(() -> factory.setProperty(limit, "0"));
+        }
+    }
+
+    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on an {@link XMLInputFactory}; {@code "0"} means unlimited. */
+    private static void liftJdkEntityLimits(final XMLInputFactory factory) {
+        for (final String limit : JDK_ENTITY_LIMITS) {
+            suppressException(() -> factory.setProperty(limit, "0"));
+        }
+    }
+
+    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on an {@link XMLReader}; {@code "0"} means unlimited. */
+    private static void liftJdkEntityLimits(final XMLReader reader) {
+        for (final String limit : JDK_ENTITY_LIMITS) {
+            suppressException(() -> reader.setProperty(limit, "0"));
+        }
+    }
+
     /**
      * Builds a {@link SAXSource} wrapping the payload, without an explicit parser; used by the unconfigured-side TrAX controls.
      */
@@ -753,32 +805,10 @@ final class AttackTestSupport {
         final SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setNamespaceAware(true);
         final XMLReader reader = strictXMLReader(factory);
-        suppressException(() -> reader.setProperty(JDK_ENTITY_EXPANSION_LIMIT, "0"));
+        liftJdkEntityLimits(reader);
         // On Android the reader is Expat, which accepts namespace-prefixes at setFeature time but fails mid-parse; a permissive TrAX identity transform probes
         // that feature, so wrap it to reject the feature eagerly (matching the production HardeningExpatXMLReader) while keeping the control permissive (no floor).
         return new SAXSource(IS_ANDROID ? new PermissiveExpatReader(reader) : reader, new InputSource(new StringReader(xml)));
-    }
-
-    /**
-     * Test-only permissive counterpart of {@code SAXParserHardener.HardeningExpatXMLReader}: a pass-through Expat wrapper that rejects the
-     * {@code namespace-prefixes} feature eagerly (so a probing TrAX identity transformer falls back instead of failing the whole parse) but installs no deny-all
-     * resolver floor, so the unconfigured/positive controls stay permissive.
-     */
-    private static final class PermissiveExpatReader extends XMLFilterImpl {
-
-        private static final String NAMESPACE_PREFIXES_FEATURE = "http://xml.org/sax/features/namespace-prefixes";
-
-        PermissiveExpatReader(final XMLReader parent) {
-            super(parent);
-        }
-
-        @Override
-        public void setFeature(final String name, final boolean value) throws SAXNotRecognizedException, SAXNotSupportedException {
-            if (value && NAMESPACE_PREFIXES_FEATURE.equals(name)) {
-                throw new SAXNotSupportedException("ExpatReader does not support enabling the '" + NAMESPACE_PREFIXES_FEATURE + "' feature");
-            }
-            super.setFeature(name, value);
-        }
     }
 
     private static boolean probeAndroid() {

@@ -386,12 +386,20 @@ final class AttackTestSupport {
      *
      * <p>{@link TransformerFactory#newTransformer(Source)} via {@link TransformerFactory#newInstance()} with FSP off; positive control proving the stylesheet
      * is well-formed.</p>
+     *
+     * <p>The control instantiates a {@link Transformer} rather than stopping at {@link TransformerFactory#newTemplates(Source)}, because a failed compile does
+     * not necessarily throw: Apache Xalan returns {@code null}, and XSLTC swallows the error and returns a {@code Templates} carrying no translet. Only building
+     * the transformer surfaces either, so the control cannot pass on a stylesheet that never compiled.</p>
      */
     static void assertPermissiveTemplatesCompiles(final String xslt) {
         assertParseSucceeds(() -> {
             final TransformerFactory factory = TransformerFactory.newInstance();
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            strictTemplates(factory, permissiveSaxSource(xslt));
+            final Templates templates = strictTemplates(factory, permissiveSaxSource(xslt));
+            if (templates == null) {
+                throw new TransformerConfigurationException("Transformer factory returned null");
+            }
+            strictTransformer(templates);
         }, "Templates compile");
     }
 

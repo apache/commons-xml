@@ -372,8 +372,7 @@ class XIncludeTest {
         final SAXParserFactory unhardenedFactory = SAXParserFactory.newInstance();
         unhardenedFactory.setNamespaceAware(true);
         assumeXIncludeAware(unhardenedFactory);
-        final XMLReader reader = unhardenedFactory.newSAXParser().getXMLReader();
-        XmlFactories.harden(reader);
+        final XMLReader reader = XmlFactories.harden(unhardenedFactory.newSAXParser().getXMLReader());
         assertThrows(SAXException.class, () -> reader.parse(input),
                 "harden(reader) should block XInclude parse=xml on reader with XInclude already enabled");
     }
@@ -386,8 +385,7 @@ class XIncludeTest {
         final SAXParserFactory unhardenedFactory = SAXParserFactory.newInstance();
         unhardenedFactory.setNamespaceAware(true);
         assumeXIncludeAware(unhardenedFactory);
-        final XMLReader reader = unhardenedFactory.newSAXParser().getXMLReader();
-        XmlFactories.harden(reader);
+        final XMLReader reader = XmlFactories.harden(unhardenedFactory.newSAXParser().getXMLReader());
         assertThrows(SAXException.class, () -> reader.parse(input),
                 "harden(reader) should block XInclude parse=text on reader with XInclude already enabled");
     }
@@ -400,8 +398,7 @@ class XIncludeTest {
         final SAXParserFactory unhardenedFactory = SAXParserFactory.newInstance();
         unhardenedFactory.setNamespaceAware(true);
         assumeXIncludeAware(unhardenedFactory);
-        final XMLReader reader = unhardenedFactory.newSAXParser().getXMLReader();
-        XmlFactories.harden(reader);
+        final XMLReader reader = XmlFactories.harden(unhardenedFactory.newSAXParser().getXMLReader());
         reader.setEntityResolver(new AllowListResolver());
         final StringBuilder captured = new StringBuilder();
         reader.setContentHandler(new DefaultHandler() {

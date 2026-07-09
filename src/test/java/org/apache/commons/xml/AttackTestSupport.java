@@ -327,7 +327,7 @@ final class AttackTestSupport {
             if (!IS_ANDROID) {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
-            liftJdkEntityLimits(factory);
+            liftEntityLimits(factory);
             strictDocumentBuilder(factory).parse(inputSource(payload));
         }, "DOM");
     }
@@ -345,7 +345,7 @@ final class AttackTestSupport {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
             final XMLReader reader = strictXMLReader(factory);
-            liftJdkEntityLimits(reader);
+            liftEntityLimits(reader);
             consumeXmlReader(reader, payload);
         }, "SAX");
     }
@@ -362,7 +362,7 @@ final class AttackTestSupport {
             if (!IS_ANDROID) {
                 factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
             }
-            liftJdkEntityLimits(factory);
+            liftEntityLimits(factory);
             strictSchema(factory, xsd);
         }, "Schema compile");
     }
@@ -376,9 +376,7 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final XMLInputFactory factory = XMLInputFactory.newInstance();
             suppressException(() -> factory.setProperty(XMLConstants.FEATURE_SECURE_PROCESSING, false));
-            liftJdkEntityLimits(factory);
-            // Woodstox ignores the JDK properties and enforces its own default (100000) entity-count limit; lift it so the positive control parses.
-            suppressException(() -> factory.setProperty(WSTX_MAX_ENTITY_COUNT, Long.MAX_VALUE));
+            liftEntityLimits(factory);
             consumeStreamReader(factory, payload);
         }, "StAX");
     }
@@ -421,7 +419,7 @@ final class AttackTestSupport {
         assertParseSucceeds(() -> {
             final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, false);
-            liftJdkEntityLimits(factory);
+            liftEntityLimits(factory);
             strictValidator(strictSchema(factory, streamSource(BENIGN_SCHEMA))).validate(streamSource(xml));
         }, "Validator");
     }
@@ -770,29 +768,30 @@ final class AttackTestSupport {
         return new InputSource(new StringReader(xml));
     }
 
-    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on a {@link DocumentBuilderFactory}; {@code "0"} means unlimited. */
-    private static void liftJdkEntityLimits(final DocumentBuilderFactory factory) {
+    /** Lifts every entity expansion limit on a {@link DocumentBuilderFactory}. */
+    private static void liftEntityLimits(final DocumentBuilderFactory factory) {
         for (final String limit : JDK_ENTITY_LIMITS) {
             suppressException(() -> factory.setAttribute(limit, "0"));
         }
     }
 
-    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on a {@link SchemaFactory}; {@code "0"} means unlimited. */
-    private static void liftJdkEntityLimits(final SchemaFactory factory) {
+    /** Lifts every entity expansion limit on a {@link SchemaFactory}. */
+    private static void liftEntityLimits(final SchemaFactory factory) {
         for (final String limit : JDK_ENTITY_LIMITS) {
             suppressException(() -> factory.setProperty(limit, "0"));
         }
     }
 
-    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on an {@link XMLInputFactory}; {@code "0"} means unlimited. */
-    private static void liftJdkEntityLimits(final XMLInputFactory factory) {
+    /** Lifts every entity expansion limit on a {@link XMLInputFactory}. */
+    private static void liftEntityLimits(final XMLInputFactory factory) {
         for (final String limit : JDK_ENTITY_LIMITS) {
             suppressException(() -> factory.setProperty(limit, "0"));
         }
+        suppressException(() -> factory.setProperty(WSTX_MAX_ENTITY_COUNT, Integer.MAX_VALUE));
     }
 
-    /** Lifts every {@link #JDK_ENTITY_LIMITS} entry on an {@link XMLReader}; {@code "0"} means unlimited. */
-    private static void liftJdkEntityLimits(final XMLReader reader) {
+    /** Lifts every entity expansion limit on an {@link XMLReader}. */
+    private static void liftEntityLimits(final XMLReader reader) {
         for (final String limit : JDK_ENTITY_LIMITS) {
             suppressException(() -> reader.setProperty(limit, "0"));
         }
@@ -805,7 +804,7 @@ final class AttackTestSupport {
         final SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setNamespaceAware(true);
         final XMLReader reader = strictXMLReader(factory);
-        liftJdkEntityLimits(reader);
+        liftEntityLimits(reader);
         // On Android the reader is Expat, which accepts namespace-prefixes at setFeature time but fails mid-parse; a permissive TrAX identity transform probes
         // that feature, so wrap it to reject the feature eagerly (matching the production HardeningExpatXMLReader) while keeping the control permissive (no floor).
         return new SAXSource(IS_ANDROID ? new PermissiveExpatReader(reader) : reader, new InputSource(new StringReader(xml)));

@@ -72,9 +72,12 @@ defends against: that is the reason reconfiguration moves a report
 
 ### Assumptions about the environment
 
-The library does not open network connections, spawn processes, install signal handlers, or read environment variables
-of its own: each `XmlFactories` method only configures and returns a JAXP factory, and reads the JDK system properties
-listed below. Which hardening recipe applies depends on the JAXP implementation present on the classpath.
+The library does not open network connections,
+spawn processes,
+install signal handlers,
+or read environment variables of its own:
+each `XmlFactories` method only configures and returns a JAXP factory.
+Which hardening recipe applies depends on the JAXP implementation present on the classpath.
 
 **System properties that modify behavior**
 

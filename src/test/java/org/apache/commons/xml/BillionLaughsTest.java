@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
  * <ul>
  *   <li>{@link #CONTENT_101K} ({@code 101000}) on the JVM: above every JVM parser default.</li>
  *   <li>{@link #CONTENT_9M} ({@code 9000000}) on Android: above libexpat's 8 MiB billion-laughs activation threshold, the only defense there since the limit is
- *       not configurable. For that same reason the positive controls do not run on Android (see {@link #assumeSAXLimitConfigurable()}): a payload the hardened test
+ *       not configurable. For that same reason the positive controls do not run on Android (see {@link #assumeEntityLimitConfigurable()}): a payload the hardened test
  *       blocks cannot be parsed even without hardening.</li>
  * </ul>
  *
@@ -66,7 +66,7 @@ class BillionLaughsTest {
      * On Android the entity-expansion limit is not configurable (libexpat's billion-laughs check cannot be lifted), so that payload
      * cannot be parsed even without hardening, leaving nothing to prove.</p>
      */
-    private static void assumeSAXLimitConfigurable() {
+    private static void assumeEntityLimitConfigurable() {
         Assumptions.assumeFalse(AttackTestSupport.IS_ANDROID, "Skipped on Android: the entity-expansion limit is not configurable");
     }
 
@@ -174,42 +174,42 @@ class BillionLaughsTest {
     @Test
     @Tag("sax")
     void unconfiguredSaxParses() {
-        assumeSAXLimitConfigurable();
+        assumeEntityLimitConfigurable();
         AttackTestSupport.assertPermissiveSaxParses(xmlPayload());
     }
 
     @Test
     @Tag("schema")
     void unconfiguredSchemaCompiles() {
-        assumeSAXLimitConfigurable();
+        assumeEntityLimitConfigurable();
         AttackTestSupport.assertPermissiveSchemaCompiles(AttackTestSupport.streamSource(xsdPayload()));
     }
 
     @Test
     @Tag("stax")
     void unconfiguredStaxParses() {
-        assumeSAXLimitConfigurable();
+        assumeEntityLimitConfigurable();
         AttackTestSupport.assertPermissiveStaxParses(xmlPayload());
     }
 
     @Test
     @Tag("trax")
     void unconfiguredTemplatesCompiles() {
-        assumeSAXLimitConfigurable();
+        assumeEntityLimitConfigurable();
         AttackTestSupport.assertPermissiveTemplatesCompiles(xsltPayload());
     }
 
     @Test
     @Tag("trax")
     void unconfiguredTransformerTransforms() {
-        assumeSAXLimitConfigurable();
+        assumeEntityLimitConfigurable();
         AttackTestSupport.assertPermissiveTransformerTransforms(xmlPayload());
     }
 
     @Test
     @Tag("schema")
     void unconfiguredValidatorValidates() {
-        assumeSAXLimitConfigurable();
+        assumeEntityLimitConfigurable();
         AttackTestSupport.assertPermissiveValidatorValidates(xmlPayload());
     }
 }

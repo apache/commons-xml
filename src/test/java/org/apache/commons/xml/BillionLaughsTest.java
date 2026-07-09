@@ -81,7 +81,7 @@ class BillionLaughsTest {
         Assumptions.assumeFalse(AttackTestSupport.IS_ANDROID, "Skipped on Android: the entity-expansion limit is not configurable");
     }
 
-    /** The body to expand: 9,000,000 on Android, where libexpat is the only defense and the limit is not configurable, 101,000 on the JVM. */
+/** The body to expand: 9,000,000 on Android, where libexpat is the only defense and the limit is not configurable, 120,000 on the JVM. */
     private static String content() {
         return AttackTestSupport.IS_ANDROID ? CONTENT_9M : CONTENT_120K;
     }

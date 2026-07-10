@@ -54,6 +54,7 @@ jobs:
     # Temurin.
     name: build (${{ matrix.os }}, ${{ matrix.distribution }} ${{ matrix.java-version }})
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       max-parallel: 20
       fail-fast: false
@@ -77,7 +78,8 @@ jobs:
           - os: ubuntu-latest
             java-version: 25
             distribution: graalvm
-            # GraalVM is slow, so we only run the `test` lifecycle
+            experimental: true
+            # The test is slower than all JVM tests; run only `test` to skip Javadoc and static-analysis goals
             maven-args: -Pnative-xalan test
 
     steps:

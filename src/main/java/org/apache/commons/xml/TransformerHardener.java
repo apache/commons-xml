@@ -18,7 +18,6 @@
 package org.apache.commons.xml;
 
 import static org.apache.commons.xml.JaxpSetters.setFeature;
-import static org.apache.commons.xml.JaxpSetters.setOptionalAttribute;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,6 +26,7 @@ import java.util.Set;
 
 import javax.xml.XMLConstants;
 import javax.xml.transform.Source;
+import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.URIResolver;
 import javax.xml.transform.sax.SAXTransformerFactory;
@@ -45,19 +45,13 @@ import javax.xml.transform.sax.SAXTransformerFactory;
  *         reflection-based extension functions.</li>
  *     <li><strong>Limits</strong>: applied best-effort by {@link Limits#tryApply(TransformerFactory)}. XSLTC honors the JDK attribute limits; Xalan ignores them
  *         (its caps come from FSP).</li>
- *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong> (set to {@code ""}): required on XSLTC. XSLTC copies this factory attribute onto the reader that parses the
- *         stylesheet ({@code Util.getInputSource}), overwriting the {@code ACCESS_EXTERNAL_DTD} the wrapper's hardened reader had already set; without it a
- *         permissive default re-opens the external-DTD/entity channel during stylesheet compilation. Xalan rejects the attribute (best-effort, ignored) and closes
- *         that channel through the hardened reader instead. Its sibling {@code ACCESS_EXTERNAL_STYLESHEET} is <em>not</em> set: the deny-all resolver below already
- *         guards the only channel it covers.</li>
  *     <li><strong>{@link Resolvers.FallbackDenyURIResolver} floor</strong>: required. A deny-all {@link URIResolver} floor, installed by
  *         {@link HardeningTransformerFactory} and carried onto every produced {@link Transformer}, blocks {@code xsl:import}/{@code xsl:include} at compile time
  *         and {@code document()} at runtime, the one channel both XSLTC and Xalan route through. A caller-set {@link URIResolver} is routed through the floor
  *         rather than replacing it, so a caller can opt a specific URI in but cannot drop the block.</li>
  *     <li><strong>{@link HardeningTransformerFactory}</strong>: required. Both implementations fall back to {@code SAXParserFactory.newInstance()} to parse a
  *         stylesheet or source document that does not carry its own reader, and only set FSP on it; wrapping the factory rewrites every {@link Source} through an
- *         {@link XmlFactories}-hardened reader instead. On Xalan that reader (its deny-all {@link org.xml.sax.EntityResolver} or its own
- *         {@code ACCESS_EXTERNAL_DTD}) is what blocks external DTDs and entities.</li>
+ *         {@link XmlFactories}-hardened reader instead.</li>
  * </ul>
  */
 final class TransformerHardener {
@@ -80,10 +74,6 @@ final class TransformerHardener {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Best-effort: JDK's XSLTC honors the JDK attribute limits, pinning them to JDK 25 secure values; Xalan ignores them.
         Limits.tryApply(factory);
-        // Required on JDK's XSLTC: it copies this factory attribute onto the reader that parses the stylesheet (Util.getInputSource).
-        // A permissive default here would re-open the external-DTD/entity channel.
-        // Xalan rejects the attribute and blocks that channel through a deny-all resolver instead.
-        setOptionalAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
         // Required: source/stylesheet parsing provisions its own SAX reader otherwise; the wrapper routes every Source through a hardened one and installs the
         // deny-all URIResolver floor (blocking xsl:import/include at compile time and document() at runtime) that a caller-set resolver cannot remove.
         return new HardeningTransformerFactory((SAXTransformerFactory) factory);

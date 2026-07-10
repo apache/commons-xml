@@ -18,6 +18,7 @@
 package org.apache.commons.xml;
 
 import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
@@ -113,9 +114,11 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link DocumentBuilderFactory}.
      *
-     * <p><strong>Enabling XInclude:</strong> {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on its own does not make XInclude
-     * usable, because an included resource is fetched like any other external resource and is therefore blocked, failing the parse. A caller that genuinely
-     * wants XInclude must, in addition to enabling awareness, install a custom {@link org.xml.sax.EntityResolver} that permits those specific lookups.</p>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is denied by default.
+     * When {@link DocumentBuilderFactory#setXIncludeAware(boolean) setXIncludeAware(true)} is called on the returned
+     * factory, the parser will process {@code xi:include} elements but every external resource lookup is rejected.
+     * To permit specific trusted resources, install an {@link org.xml.sax.EntityResolver EntityResolver} on the
+     * {@link DocumentBuilder} that allow-lists them; any href the resolver does not explicitly allow stays blocked.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
@@ -127,9 +130,12 @@ public final class XmlFactories {
     /**
      * Returns a fresh, hardened {@link SAXParserFactory}.
      *
-     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is disabled. Calling
-     * {@link SAXParserFactory#setXIncludeAware(boolean) setXIncludeAware(true)} on the returned factory does not re-enable resolution; a parse that encounters
-     * an {@code xi:include} element fails.</p>
+     * <p>Beyond the three universal guarantees on {@link XmlFactories}, XInclude resolution is denied by default.
+     * When {@link SAXParserFactory#setXIncludeAware(boolean) setXIncludeAware(true)} is called on the returned
+     * factory, the parser will process {@code xi:include} elements but every external resource lookup is rejected.
+     * To permit specific trusted resources, install an {@link org.xml.sax.EntityResolver EntityResolver} on the
+     * {@link org.xml.sax.XMLReader} that allow-lists them; any href the resolver does not explicitly allow stays
+     * blocked.</p>
      *
      * @return a hardened factory.
      * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.

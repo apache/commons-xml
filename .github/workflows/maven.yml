@@ -54,7 +54,7 @@ jobs:
     # Temurin.
     name: build (${{ matrix.os }}, ${{ matrix.distribution }} ${{ matrix.java-version }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       max-parallel: 20
       fail-fast: false

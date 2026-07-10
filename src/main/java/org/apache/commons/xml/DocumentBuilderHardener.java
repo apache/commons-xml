@@ -19,7 +19,6 @@ package org.apache.commons.xml;
 
 import static org.apache.commons.xml.JaxpSetters.setFeature;
 import static org.apache.commons.xml.JaxpSetters.setOptionalFeature;
-import static org.apache.commons.xml.JaxpSetters.trySetAttribute;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
@@ -38,9 +37,10 @@ import org.xml.sax.EntityResolver;
  *     <li><strong>FSP</strong>: required. It switches on the implementation's built-in security manager, which is what carries the processing limits.</li>
  *     <li><strong>{@code XERCES_LOAD_EXTERNAL_DTD}</strong>: optional. Where supported, it skips the external DTD subset on non-validating parsers so a
  *         DOCTYPE-only document parses without a fetch attempt. If not supported, the fetch will throw instead, due to the following settings.</li>
- *     <li><strong>{@code ACCESS_EXTERNAL_DTD}</strong>: the dividing capability. Implementations that honor it (the JDK-internal Xerces) block external fetches
- *         through the JAXP 1.5 properties and are returned as-is. Implementations that reject it (the external Xerces distribution) are wrapped so a deny-all
- *         {@link EntityResolver} floor is installed on every {@link DocumentBuilder} produced.</li>
+ *     <li><strong>Deny-all resolver floor</strong>: every produced {@link DocumentBuilder} is wrapped by a {@link HardeningDocumentBuilderFactory} that keeps a
+ *         deny-all {@link EntityResolver} floor. That floor blocks external DTD, entity, schema and {@code xi:include} fetches in one place: the stock JDK's
+ *         XInclude processor ignores {@code ACCESS_EXTERNAL_*} and consults the {@link EntityResolver} instead, so no {@code ACCESS_EXTERNAL_*} attributes are
+ *         needed here. A caller can chain its own resolver onto the floor to allow-list resources, but cannot remove it.</li>
  * </ul>
  */
 final class DocumentBuilderHardener {
@@ -60,13 +60,9 @@ final class DocumentBuilderHardener {
         setFeature(factory, XMLConstants.FEATURE_SECURE_PROCESSING, true);
         // Optional: skip the external DTD subset on non-validating parsers so DOCTYPE-only documents parse without a blocked fetch attempt.
         setOptionalFeature(factory, XERCES_LOAD_EXTERNAL_DTD, false);
-        // ACCESS_EXTERNAL_* support is the dividing capability between JAXP 1.5 implementations and older ones.
-        if (trySetAttribute(factory, XMLConstants.ACCESS_EXTERNAL_DTD, "")
-                && trySetAttribute(factory, XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")) {
-            // Honored: the JAXP 1.5 properties block external fetches, so the bare factory is already hardened.
-            return factory;
-        }
-        // Rejected: external Xerces ignores ACCESS_EXTERNAL_*; install a deny-all resolver on every DocumentBuilder.
+        // Required: HardeningDocumentBuilderFactory installs a deny-all EntityResolver floor on every DocumentBuilder.
+        // That floor blocks external DTD, entity, schema and xi:include fetches in one place: no ACCESS_EXTERNAL_* attributes are needed here.
+        // Callers can chain their resolvers, but not override the floor.
         return new HardeningDocumentBuilderFactory(factory);
     }
 

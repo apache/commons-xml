@@ -81,7 +81,7 @@ public final class XmlFactories {
      *
      * <p>The reader is namespace-aware.</p>
      *
-     * @param source the source to harden; never {@code null}.
+     * @param source The source to harden; never {@code null}.
      * @return A hardened source.
      * @throws TransformerConfigurationException if a hardened reader cannot be obtained.
      */
@@ -103,7 +103,7 @@ public final class XmlFactories {
     /**
      * Hardens an existing {@link XMLReader}.
      *
-     * @param reader the reader to harden; never {@code null}.
+     * @param reader The reader to harden; never {@code null}.
      * @return A hardened reader.
      * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */

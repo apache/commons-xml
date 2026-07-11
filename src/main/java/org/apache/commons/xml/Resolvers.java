@@ -111,7 +111,7 @@ final class Resolvers {
          * @param publicId the public identifier, or {@code null} if none.
          * @param baseURI  the base URI for relative resolution, or {@code null}.
          * @param systemId the system identifier of the unresolved entity.
-         * @return an {@link InputSource} to permit the lookup, or {@code null} to skip it silently; the default implementation never returns normally.
+         * @return An {@link InputSource} to permit the lookup, or {@code null} to skip it silently; the default implementation never returns normally.
          * @throws SAXException to deny the lookup (the default behavior).
          * @throws IOException  if a subclass opens a stream that fails.
          */

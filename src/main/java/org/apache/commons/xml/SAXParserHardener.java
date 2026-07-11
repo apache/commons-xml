@@ -154,7 +154,7 @@ final class SAXParserHardener {
      * Hardens an existing {@link XMLReader}.
      *
      * @param reader the reader to harden; never {@code null}.
-     * @return a hardened reader.
+     * @return A hardened reader.
      * @throws IllegalStateException if a required hardening setting cannot be applied to the underlying implementation.
      */
     static XMLReader hardenReader(final XMLReader reader) {

@@ -239,7 +239,7 @@ final class Resolvers {
          * @param systemID the system identifier of the unresolved entity.
          * @param baseURI  the base URI for relative resolution, or {@code null}.
          * @param namespace the namespace (or, for Woodstox, the entity name), or {@code null}.
-         * @return the replacement input, or a value the caller's parser accepts; the default implementation never returns normally.
+         * @return The replacement input, or a value the caller's parser accepts; the default implementation never returns normally.
          * @throws XMLStreamException to deny the lookup (the default behavior).
          */
         protected Object onUnresolved(final String publicID, final String systemID, final String baseURI, final String namespace) throws XMLStreamException {
@@ -254,7 +254,7 @@ final class Resolvers {
          * @param systemID the system identifier of the unresolved entity.
          * @param baseURI  the base URI for relative resolution, or {@code null}.
          * @param namespace the namespace (or, for Woodstox, the entity name), or {@code null}.
-         * @return the exception to throw.
+         * @return The exception to throw.
          */
         protected final XMLStreamException denied(final String publicID, final String systemID, final String baseURI, final String namespace) {
             return new XMLStreamException(forbiddenMessage(null, namespace, publicID, systemID, baseURI));
@@ -289,7 +289,7 @@ final class Resolvers {
      *
      * @param baseURI  the absolute base URI to resolve against, or {@code null} if none is available.
      * @param systemId the system identifier, possibly relative to {@code baseURI}.
-     * @return the absolutized system identifier, or {@code systemId} unchanged when it cannot or need not be resolved.
+     * @return The absolutized system identifier, or {@code systemId} unchanged when it cannot or need not be resolved.
      */
     private static String absolutize(final String baseURI, final String systemId) {
         if (systemId == null || baseURI == null) {

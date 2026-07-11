@@ -636,7 +636,7 @@ final class AttackTestSupport {
      * Builds the failure message used by every {@code assert*Blocks(...)} helper.
      *
      * @param description short label naming the JAXP surface under test.
-     * @return the assertion-failure message string.
+     * @return The assertion-failure message string.
      */
     private static String blockedDescription(final String description) {
         return "Hardening did not block " + description + "; parse completed successfully.";
